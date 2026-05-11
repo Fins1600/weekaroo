@@ -1,5 +1,12 @@
 [
   {
+    "id": "us-holidays",
+    "name": "US Holidays",
+    "url": "https://www.officeholidays.com/ics/usa",
+    "color": "#f59e0b",
+    "enabled": true
+  },
+  {
     "name": "Family",
     "url": "https://example.com/demo/family.ics",
     "color": "#7dd3c7",

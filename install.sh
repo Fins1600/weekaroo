@@ -30,7 +30,6 @@ copy_if_missing() {
   fi
 }
 
-copy_if_missing "calendars.example.json" "calendars.json"
 copy_if_missing "family-messages.example.json" "family-messages.json"
 copy_if_missing "countdowns.example.json" "countdowns.json"
 

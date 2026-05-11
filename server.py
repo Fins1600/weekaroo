@@ -11,6 +11,15 @@ import urllib.request
 
 ROOT = Path(__file__).resolve().parent
 CAL_FILE = ROOT / "calendars.json"
+DEFAULT_CALENDAR_SOURCES = [
+    {
+        "id": "us-holidays",
+        "name": "US Holidays",
+        "url": "https://www.officeholidays.com/ics/usa",
+        "color": "#f59e0b",
+        "enabled": True
+    }
+]
 FAMILY_MESSAGES_FILE = ROOT / "family-messages.json"
 DAY_NOTES_FILE = ROOT / "day-notes.json"
 TODAY_CONTENT_FILE = ROOT / "today-content.json"
@@ -164,8 +173,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def load_calendar_sources_payload(self):
         if not CAL_FILE.exists():
-            return []
-        data = json.loads(CAL_FILE.read_text())
+            data = DEFAULT_CALENDAR_SOURCES
+        else:
+            data = json.loads(CAL_FILE.read_text())
         if not isinstance(data, list):
             return []
         cleaned = []

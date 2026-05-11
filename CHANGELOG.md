@@ -9,7 +9,7 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.
 ### Added
 
 - Initial sanitized FOSS distribution of Weekaroo.
-- Weekly ICS calendar dashboard.
+- Weekly ICS calendar dashboard with a US Holidays calendar enabled by default.
 - Local weather support by ZIP/postal code.
 - Optional WeatherFlow Tempest support.
 - Rotating messages, event-matched message rules, day notes, countdowns, and count-up timers.

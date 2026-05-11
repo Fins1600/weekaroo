@@ -49,17 +49,21 @@ http://127.0.0.1:4020
 
 ## Configure calendars
 
-Copy the example file and add your own ICS feed URLs:
+Weekaroo includes a US Holidays calendar by default, so a fresh install shows useful events without setup.
 
-```bash
-cp calendars.example.json calendars.json
-```
-
-Example:
+Add your own ICS feed URLs from Settings → Calendars, or create `calendars.json` manually. Example:
 
 ```json
 [
   {
+    "id": "us-holidays",
+    "name": "US Holidays",
+    "url": "https://www.officeholidays.com/ics/usa",
+    "color": "#f59e0b",
+    "enabled": true
+  },
+  {
+    "id": "family",
     "name": "Family",
     "url": "https://calendar.example.com/family.ics",
     "color": "#7dd3c7",
