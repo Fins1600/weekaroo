@@ -1,0 +1,27 @@
+{
+  "rotationSeconds": 12,
+  "slots": {
+    "lowerLeft": [
+      {
+        "id": "summer-trip",
+        "type": "countdown",
+        "title": "Summer Trip",
+        "emoji": "✈️",
+        "target": "2026-07-01T00:00:00-07:00",
+        "subtitle": "Trip starts on July 1, 2026",
+        "enabled": true
+      }
+    ],
+    "lowerRight": [
+      {
+        "id": "project-start",
+        "type": "countup",
+        "title": "Days Since Launch",
+        "emoji": "🚀",
+        "start": "2026-01-01T00:00:00-07:00",
+        "subtitle": "Weekaroo keeps getting better",
+        "enabled": true
+      }
+    ]
+  }
+}

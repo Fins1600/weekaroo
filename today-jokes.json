@@ -1,0 +1,22 @@
+[
+  {
+    "setup": "What do you call a tiger in a lab coat?",
+    "punchline": "A scientist tiger.",
+    "source": "teehee.dev"
+  },
+  {
+    "setup": "Why did the scarecrow win an award?",
+    "punchline": "Because he was outstanding in his field.",
+    "source": "official-joke-api"
+  },
+  {
+    "setup": "Why do ducks have tail feathers?",
+    "punchline": "To cover their butt quacks.",
+    "source": "official-joke-api"
+  },
+  {
+    "setup": "What do you call fake spaghetti?",
+    "punchline": "An impasta.",
+    "source": "official-joke-api"
+  }
+]

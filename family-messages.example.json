@@ -1,0 +1,20 @@
+{
+  "messages": [
+    "Welcome home!",
+    "Have a great day!"
+  ],
+  "defaultMessages": [
+    "Enjoy the calm, nothing scheduled today.",
+    "Open day ahead, make it a good one."
+  ],
+  "rules": [
+    {
+      "matchAny": ["baseball", "game"],
+      "message": "Game day energy ⚾"
+    },
+    {
+      "matchAny": ["test", "quiz", "exam"],
+      "message": "Good luck on your test!"
+    }
+  ]
+}

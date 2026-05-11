@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weekaroo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=20260509-0945" />
+  </head>
+  <body>
+    <div class="background"></div>
+    <div class="overlay"></div>
+
+    <main class="app-shell">
+      <header class="top-bar panel">
+        <section id="time-block" class="time-block" role="button" tabindex="0" aria-label="Open today's fun facts">
+          <div id="current-date" class="current-date">Friday, April 17</div>
+          <div id="current-time" class="current-time">10:14 PM</div>
+        </section>
+
+        <section class="title-block">
+          <div class="eyebrow"></div>
+          <h1 id="dashboard-title" class="dashboard-title" role="button" tabindex="0" aria-label="Open dashboard settings">Weekaroo</h1>
+          <div class="week-range-row">
+            <div id="week-prev" class="week-range-arrow" role="button" tabindex="0" aria-label="Show previous week">‹</div>
+            <div id="week-range" class="week-range" role="button" tabindex="0" aria-label="Return to current week">Apr 13 - Apr 19</div>
+            <div id="week-next" class="week-range-arrow" role="button" tabindex="0" aria-label="Show next week">›</div>
+          </div>
+        </section>
+
+        <section id="weather-block" class="weather-block" role="button" tabindex="0" aria-label="Open weather details">
+          <div class="weather-header">Local Weather</div>
+          <div class="weather-now-row">
+            <div id="weather-temp" class="weather-temp">--°</div>
+            <div>
+              <div id="weather-summary" class="weather-summary">Loading...</div>
+              <div id="weather-highlow" class="weather-highlow">H -- / L --</div>
+            </div>
+          </div>
+        </section>
+      </header>
+
+      <section id="week-grid" class="week-grid"></section>
+
+      <footer class="message-bar panel">
+        <div id="countdown-block" class="countdown-block" role="button" tabindex="0" aria-label="Open lower left timer details">
+          <div class="countdown-emoji">🦥</div>
+          <div>
+            <div class="countdown-label">Summer Trip Countdown</div>
+            <div id="countdown-text" class="countdown-text">Loading trip countdown...</div>
+          </div>
+        </div>
+        <div id="family-message" class="family-message" role="button" tabindex="0" aria-label="Open family messages">
+          <div id="family-message-text" class="family-message-text-display">Loading family messages...</div>
+          <div id="family-message-mascot" class="family-message-mascot hidden" aria-hidden="true">
+            <div id="mascot-track" class="mascot-track-inline">
+              <div id="mascot-creature" class="mascot-creature mascot-idle" title="Game day mascot is roaming">
+                <div id="mascot-avatar" class="mascot-avatar" aria-hidden="true"></div>
+                <div class="mascot-shadow" aria-hidden="true"></div>
+              </div>
+              <div id="arcade-runner" class="arcade-runner hidden" aria-hidden="true">
+                <div class="arcade-dots" aria-hidden="true"></div>
+                <div class="pacman" aria-hidden="true"></div>
+                <div class="ghost ghost-color" aria-hidden="true"><span></span></div>
+                <div class="ghost ghost-blue" aria-hidden="true"><span></span></div>
+                <div class="space-invaders-scene" aria-hidden="true">
+                  <div class="space-stars"></div>
+                  <div class="space-moon"></div>
+                  <div class="space-fighter">
+                    <span class="fighter-wing wing-top"></span>
+                    <span class="fighter-wing wing-bottom"></span>
+                    <span class="fighter-tail tail-top"></span>
+                    <span class="fighter-tail tail-bottom"></span>
+                    <span class="fighter-body"></span>
+                    <span class="fighter-cockpit"></span>
+                    <span class="nose-blaster"></span>
+                    <span class="rear-thruster"></span>
+                  </div>
+                  <div class="laser-shot shot-one"></div>
+                  <div class="laser-shot shot-two"></div>
+                  <div class="laser-shot shot-three"></div>
+                  <div class="alien-row row-one">
+                    <div class="alien alien-one"><span></span></div>
+                    <div class="alien alien-two"><span></span></div>
+                    <div class="alien alien-three"><span></span></div>
+                  </div>
+                  <div class="alien-row row-two">
+                    <div class="alien alien-four"><span></span></div>
+                    <div class="alien alien-five"><span></span></div>
+                  </div>
+                  <div class="alien-pop pop-one"></div>
+                  <div class="alien-pop pop-two"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="countup-block" class="countup-block" role="button" tabindex="0" aria-label="Open lower right timer details">
+          <div class="countup-emoji">💍</div>
+          <div>
+            <div class="countup-label">Big Day Counter</div>
+            <div id="countup-text" class="countup-text">Loading forever counter...</div>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <template id="day-column-template">
+      <section class="day-column panel">
+        <div class="day-header">
+          <div class="day-name"></div>
+          <div class="day-date"></div>
+        </div>
+        <div class="events"></div>
+      </section>
+    </template>
+
+    <template id="event-template">
+      <article class="event-card" role="button" tabindex="0">
+        <div class="event-time"></div>
+        <div class="event-title"></div>
+        <div class="event-calendar-name"></div>
+      </article>
+    </template>
+
+    <div id="event-modal" class="event-modal hidden" aria-hidden="true">
+      <div class="event-modal-backdrop" data-close-modal="true"></div>
+      <section class="event-modal-card panel" role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
+        <button id="event-modal-close" class="event-modal-close" type="button" aria-label="Close event details">×</button>
+        <div id="event-modal-calendar" class="event-modal-calendar"></div>
+        <h2 id="event-modal-title" class="event-modal-title">Event</h2>
+        <div id="event-modal-time" class="event-modal-time"></div>
+        <div id="event-modal-location-row" class="event-modal-row hidden">
+          <div class="event-modal-label">Location</div>
+          <div id="event-modal-location" class="event-modal-value"></div>
+        </div>
+        <div id="event-modal-organizer-row" class="event-modal-row hidden">
+          <div class="event-modal-label">Invited by</div>
+          <div id="event-modal-organizer" class="event-modal-value"></div>
+        </div>
+        <div id="event-modal-description-row" class="event-modal-row hidden">
+          <div class="event-modal-label">Details</div>
+          <div id="event-modal-description" class="event-modal-value event-modal-description"></div>
+        </div>
+      </section>
+    </div>
+
+    <div id="family-messages-modal" class="event-modal hidden" aria-hidden="true">
+      <div class="event-modal-backdrop" data-close-family-messages-modal="true"></div>
+      <section class="event-modal-card family-messages-modal-card panel" role="dialog" aria-modal="true" aria-labelledby="family-messages-modal-title">
+        <button id="family-messages-modal-close" class="event-modal-close" type="button" aria-label="Close family messages">×</button>
+        <div class="event-modal-calendar">Family Messages</div>
+        <h2 id="family-messages-modal-title" class="event-modal-title">Message queue</h2>
+        <div class="event-modal-time">View active rotation messages, add a new one, or remove one.</div>
+        <div class="family-messages-layout">
+          <div class="family-message-add-row panel-lite">
+            <div class="event-modal-label">Add a custom message</div>
+            <div class="family-message-add-controls">
+              <input id="family-message-input" class="family-message-input" type="text" placeholder="Type a family message..." maxlength="140" autocomplete="off" />
+              <button id="family-message-add" class="family-message-add-button" type="button">Add</button>
+            </div>
+          </div>
+          <div class="family-messages-main panel-lite">
+            <div class="event-modal-label">Active messages</div>
+            <div id="family-messages-list" class="family-messages-list"></div>
+          </div>
+          <div id="family-messages-status" class="family-messages-status hidden"></div>
+        </div>
+      </section>
+    </div>
+
+    <div id="weather-modal" class="event-modal hidden" aria-hidden="true">
+      <div class="event-modal-backdrop" data-close-weather-modal="true"></div>
+      <section class="event-modal-card weather-modal-card panel" role="dialog" aria-modal="true" aria-labelledby="weather-modal-title">
+        <button id="weather-modal-close" class="event-modal-close" type="button" aria-label="Close weather details">×</button>
+        <div id="weather-modal-station" class="event-modal-calendar">Weather</div>
+        <div class="weather-hero">
+          <div>
+            <h2 id="weather-modal-title" class="event-modal-title">Tempest Weather</h2>
+            <div id="weather-modal-updated" class="event-modal-time"></div>
+            <div id="weather-hero-meta" class="weather-hero-meta">H -- / L --</div>
+          </div>
+          <div class="weather-hero-temp-wrap">
+            <div id="weather-hero-icon" class="weather-hero-icon" aria-hidden="true">☀️</div>
+            <div id="weather-hero-temp" class="weather-hero-temp">--°</div>
+          </div>
+        </div>
+        <div class="event-modal-row weather-forecast-section">
+          <div class="event-modal-label">7 day forecast</div>
+          <div id="weather-forecast" class="weather-forecast-grid"></div>
+        </div>
+        <div class="weather-sun-row">
+          <div class="weather-sun-card"><div class="event-modal-label">Sunrise</div><div id="weather-sunrise" class="weather-sun-value">--</div></div>
+          <div class="weather-sun-card"><div class="event-modal-label">Sunset</div><div id="weather-sunset" class="weather-sun-value">--</div></div>
+        </div>
+        <div class="weather-detail-grid">
+          <div class="weather-detail-tile"><div class="event-modal-label">Temperature</div><div id="weather-detail-temp" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div class="event-modal-label">Feels like</div><div id="weather-detail-feelslike" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div class="event-modal-label">Humidity</div><div id="weather-detail-humidity" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div class="event-modal-label">Wind</div><div id="weather-detail-wind" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div class="event-modal-label">UV</div><div id="weather-detail-uv" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div class="event-modal-label">Solar</div><div id="weather-detail-solar" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div class="event-modal-label">Rain today</div><div id="weather-detail-rain" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div class="event-modal-label">Rain yesterday</div><div id="weather-detail-rain-yesterday" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div class="event-modal-label">Rain last hour</div><div id="weather-detail-rain-hour" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div class="event-modal-label">Lightning</div><div id="weather-detail-lightning" class="weather-detail-value">--</div></div>
+        </div>
+      </section>
+    </div>
+
+    <div id="timer-modal" class="event-modal hidden" aria-hidden="true">
+      <div class="event-modal-backdrop" data-close-timer-modal="true"></div>
+      <section class="event-modal-card countdown-modal-card panel" role="dialog" aria-modal="true" aria-labelledby="timer-modal-title">
+        <button id="timer-modal-close" class="event-modal-close" type="button" aria-label="Close timer details">×</button>
+        <div id="timer-modal-kicker" class="event-modal-calendar">Timer</div>
+        <div class="countdown-modal-hero">
+          <div id="timer-modal-image" class="countdown-modal-image"></div>
+          <div class="countdown-modal-content">
+            <div id="timer-modal-icon" class="countup-modal-icon" aria-hidden="true">⏳</div>
+            <h2 id="timer-modal-title" class="event-modal-title">Timer details</h2>
+            <div id="timer-modal-total" class="countdown-modal-total">--</div>
+            <div id="timer-modal-subtitle" class="event-modal-time">--</div>
+            <div id="timer-modal-comparison" class="countdown-comparison">--</div>
+          </div>
+        </div>
+        <div class="countup-stats-grid">
+          <div class="weather-detail-tile"><div id="timer-stat-1-label" class="event-modal-label">Days</div><div id="timer-stat-1" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div id="timer-stat-2-label" class="event-modal-label">Weeks</div><div id="timer-stat-2" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div id="timer-stat-3-label" class="event-modal-label">Hours</div><div id="timer-stat-3" class="weather-detail-value">--</div></div>
+          <div class="weather-detail-tile"><div id="timer-stat-4-label" class="event-modal-label">Progress</div><div id="timer-stat-4" class="weather-detail-value">--</div></div>
+        </div>
+        <div class="event-modal-row">
+          <div id="timer-detail-label" class="event-modal-label">Detail</div>
+          <div id="timer-detail-text" class="countup-love-note">Loading detail...</div>
+        </div>
+      </section>
+    </div>
+
+    <div id="today-modal" class="event-modal hidden" aria-hidden="true">
+      <div class="event-modal-backdrop" data-close-today-modal="true"></div>
+      <section class="event-modal-card today-modal-card panel" role="dialog" aria-modal="true" aria-labelledby="today-modal-title">
+        <button id="today-modal-close" class="event-modal-close" type="button" aria-label="Close today's fun facts">×</button>
+        <div class="event-modal-calendar">Today on the clock</div>
+        <h2 id="today-modal-title" class="event-modal-title">A few fun things about today</h2>
+        <div id="today-modal-date" class="event-modal-time">Loading today's highlights...</div>
+        <div class="today-facts-grid">
+          <div class="today-fact-card">
+            <div class="event-modal-label">This Day in Sports History</div>
+            <div id="today-sports-history" class="today-fact-value">Loading...</div>
+          </div>
+          <div class="today-fact-card">
+            <div class="event-modal-label">Joke of the Day</div>
+            <div id="today-joke" class="today-fact-value">Loading...</div>
+          </div>
+          <div class="today-fact-card">
+            <div class="event-modal-label">Today Is...</div>
+            <div id="today-observances" class="today-fact-value">Loading...</div>
+          </div>
+          <div class="today-fact-card">
+            <div class="event-modal-label">Fun Fact About Today</div>
+            <div id="today-fun-fact" class="today-fact-value">Loading...</div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="day-note-modal" class="event-modal hidden" aria-hidden="true">
+      <div class="event-modal-backdrop" data-close-day-note-modal="true"></div>
+      <section class="event-modal-card family-messages-modal-card panel" role="dialog" aria-modal="true" aria-labelledby="day-note-modal-title">
+        <button id="day-note-modal-close" class="event-modal-close" type="button" aria-label="Close day note">×</button>
+        <div class="event-modal-calendar">Day Note</div>
+        <h2 id="day-note-modal-title" class="event-modal-title">Add a note for this day</h2>
+        <div id="day-note-modal-date" class="event-modal-time">Choose what to remember for this day.</div>
+        <div class="family-messages-layout">
+          <div class="family-message-add-row panel-lite">
+            <div class="event-modal-label">Day note</div>
+            <div class="family-message-add-controls">
+              <input id="day-note-input" class="family-message-input" type="text" placeholder="What's for dinner or what should we remember?" maxlength="160" autocomplete="off" />
+              <button id="day-note-save" class="family-message-add-button" type="button">Save</button>
+            </div>
+            <button id="day-note-delete" class="family-message-delete hidden" type="button">Delete note</button>
+          </div>
+          <div id="day-note-status" class="family-messages-status hidden"></div>
+        </div>
+      </section>
+    </div>
+
+
+    <div id="settings-modal" class="event-modal hidden" aria-hidden="true">
+      <div class="event-modal-backdrop" data-close-settings-modal="true"></div>
+      <section class="event-modal-card settings-modal-card panel" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+        <button id="settings-modal-close" class="event-modal-close" type="button" aria-label="Close settings">×</button>
+        <div class="event-modal-calendar">Dashboard Settings</div>
+        <h2 id="settings-modal-title" class="event-modal-title">Tune the family dashboard</h2>
+        <div class="event-modal-time">Changes save on this display and apply immediately.</div>
+
+        <div class="settings-layout">
+          <nav class="settings-nav" aria-label="Settings sections">
+            <button class="settings-tab active" type="button" data-settings-tab="display">Display</button>
+            <button class="settings-tab" type="button" data-settings-tab="calendar">Calendar</button>
+            <button class="settings-tab" type="button" data-settings-tab="weather">Weather</button>
+            <button class="settings-tab" type="button" data-settings-tab="timers">Timers</button>
+            <button class="settings-tab" type="button" data-settings-tab="ai">AI</button>
+            <button class="settings-tab" type="button" data-settings-tab="motion">Motion</button>
+            <button class="settings-tab" type="button" data-settings-tab="system">System</button>
+          </nav>
+
+          <div class="settings-pages">
+            <section class="settings-page active" data-settings-page="display">
+              <div class="settings-section-title">Display</div>
+              <label class="settings-field"><span>Dashboard name</span><input id="setting-dashboard-title" type="text" maxlength="42" /></label>
+              <label class="settings-field"><span>Clock format</span><select id="setting-clock-format"><option value="12">12 hour</option><option value="24">24 hour</option></select></label>
+              <label class="settings-field"><span>Color theme</span><select id="setting-color-theme"><option value="teal">Teal glass</option><option value="light-glass">Light glass</option><option value="red">Red</option><option value="blue">Blue</option><option value="green">Green</option><option value="purple">Purple</option><option value="yellow">Yellow</option><option value="asu">ASU Maroon & Gold</option></select></label>
+              <label class="settings-toggle"><input id="setting-show-seconds" type="checkbox" /><span>Show seconds in the clock</span></label>
+              <label class="settings-field"><span>Background dim</span><input id="setting-overlay-opacity" type="range" min="20" max="78" step="2" /></label>
+            </section>
+
+            <section class="settings-page" data-settings-page="calendar">
+              <div class="settings-section-title">Calendar</div>
+              <label class="settings-field"><span>Week starts on</span><select id="setting-week-start"><option value="monday">Monday</option><option value="sunday">Sunday</option></select></label>
+              <label class="settings-field"><span>Card density</span><select id="setting-density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+              <label class="settings-toggle"><input id="setting-show-calendar-names" type="checkbox" /><span>Show calendar names on event cards</span></label>
+              <div class="calendar-manager panel-lite">
+                <div class="calendar-manager-header">
+                  <div>
+                    <div class="settings-section-title">Calendar sources</div>
+                    <div class="settings-helper">Add, edit, disable, or remove calendar feeds.</div>
+                  </div>
+                  <button id="calendar-source-add" class="settings-small-button" type="button">Add calendar</button>
+                </div>
+                <div id="calendar-source-list" class="calendar-source-list"></div>
+                <div class="calendar-manager-actions">
+                  <button id="calendar-source-save" class="settings-reset" type="button">Save calendars</button>
+                  <button id="calendar-source-reload" class="settings-small-button" type="button">Reload</button>
+                </div>
+                <div id="calendar-source-status" class="family-messages-status hidden"></div>
+              </div>
+            </section>
+
+            <section class="settings-page" data-settings-page="weather">
+              <div class="settings-section-title">Weather</div>
+              <label class="settings-field"><span>Weather header name</span><input id="setting-weather-title" type="text" maxlength="36" /></label>
+              <label class="settings-toggle"><input id="setting-show-daily-weather" type="checkbox" /><span>Show daily forecast badges on calendar days</span></label>
+              <div class="weather-config-panel">
+                <label class="settings-field"><span>Weather source</span><select id="setting-weather-provider"><option value="public">Public weather by ZIP code</option><option value="tempest">Tempest / WeatherFlow station</option></select></label>
+                <div id="weather-public-config" class="weather-provider-fields">
+                  <label class="settings-field"><span>ZIP code</span><input id="setting-weather-public-zip" type="text" inputmode="numeric" maxlength="10" placeholder="10001" /></label>
+                  <label class="settings-field"><span>Location label</span><input id="setting-weather-public-label" type="text" maxlength="42" placeholder="New York, NY" /></label>
+                  <div class="settings-note">Public mode uses Zippopotam.us for ZIP lookup and Open-Meteo for current conditions and forecast. No API key required.</div>
+                </div>
+                <div id="weather-tempest-config" class="weather-provider-fields hidden">
+                  <label class="settings-field"><span>Tempest station ID</span><input id="setting-weather-tempest-station" type="text" autocomplete="off" placeholder="Station ID" /></label>
+                  <label class="settings-field"><span>WeatherFlow token</span><input id="setting-weather-tempest-token" type="password" autocomplete="off" placeholder="WeatherFlow token" /></label>
+                  <div class="settings-note">Leave the token blank when saving to keep the current stored token.</div>
+                </div>
+                <div class="weather-config-actions">
+                  <button id="weather-config-save" class="settings-reset" type="button">Save weather</button>
+                  <button id="weather-config-reload" class="settings-small-button" type="button">Reload</button>
+                </div>
+                <div id="weather-config-status" class="settings-status"></div>
+              </div>
+            </section>
+
+            <section class="settings-page" data-settings-page="timers">
+              <div class="settings-section-title">Corner timers</div>
+              <div class="settings-note">Configure the lower-left and lower-right timer slots with dashboard-style controls. Each slot can rotate through timer rows, and each timer can be a count down or count up.</div>
+
+              <div class="timer-settings-grid">
+                <div class="timer-config-panel">
+                  <label class="settings-toggle"><input id="setting-timer-left-enabled" type="checkbox" /><span>Show lower-left timer</span></label>
+                  <div class="settings-section-title">Lower-left rotation</div>
+                  <div id="timer-left-list" class="timer-assignment-list"></div>
+                  <button id="timer-left-add" class="settings-small-button" type="button">Add lower-left timer</button>
+                </div>
+
+                <div class="timer-config-panel">
+                  <label class="settings-toggle"><input id="setting-timer-right-enabled" type="checkbox" /><span>Show lower-right timer</span></label>
+                  <div class="settings-section-title">Lower-right rotation</div>
+                  <div id="timer-right-list" class="timer-assignment-list"></div>
+                  <button id="timer-right-add" class="settings-small-button" type="button">Add lower-right timer</button>
+                </div>
+              </div>
+
+              <div class="timer-config-panel">
+                <div class="timer-editor-header">
+                  <label class="settings-field"><span>Edit timer</span><select id="timer-editor-select"></select></label>
+                  <button id="timer-ai-enrich" class="settings-small-button" type="button">AI enrich</button>
+                  <button id="timer-add-new" class="settings-small-button" type="button">New timer</button>
+                  <button id="timer-delete-selected" class="settings-small-button" type="button">Delete timer</button>
+                </div>
+
+                <div class="timer-editor-grid">
+                  <label class="settings-toggle"><input id="timer-field-enabled" type="checkbox" /><span>Timer enabled</span></label>
+                  <label class="settings-field"><span>Type</span><select id="timer-field-type"><option value="countdown">Count down</option><option value="countup">Count up</option></select></label>
+                  <label class="settings-field"><span>Timer ID</span><input id="timer-field-id" type="text" maxlength="64" placeholder="summer-trip" /></label>
+                  <label class="settings-field"><span>Emoji</span><input id="timer-field-emoji" type="text" maxlength="8" placeholder="⏳" /></label>
+                  <label class="settings-field"><span>Title</span><input id="timer-field-title" type="text" maxlength="64" placeholder="Summer Trip Countdown" /></label>
+                  <label class="settings-field"><span>Hero title</span><input id="timer-field-hero-title" type="text" maxlength="96" placeholder="Pura Vida is getting closer" /></label>
+                  <label class="settings-field"><span>Subtitle</span><input id="timer-field-subtitle" type="text" maxlength="120" placeholder="Starts on May 30, 2026" /></label>
+                  <label class="settings-field"><span>Detail label</span><input id="timer-field-detail-label" type="text" maxlength="48" placeholder="Fun fact" /></label>
+                  <label class="settings-field"><span>Countdown target</span><input id="timer-field-target" type="datetime-local" /></label>
+                  <label class="settings-field"><span>Count-up start</span><input id="timer-field-start" type="datetime-local" /></label>
+                  <label class="settings-field"><span>Show countdown days before</span><input id="timer-field-show-before" type="number" min="0" max="5000" step="1" /></label>
+                  <label class="settings-field"><span>Show countdown days after</span><input id="timer-field-show-after" type="number" min="0" max="5000" step="1" /></label>
+                  <label class="settings-field"><span>Count-up milestone step, days</span><input id="timer-field-milestone-step" type="number" min="1" max="10000" step="1" /></label>
+                </div>
+
+                <div class="timer-list-editor">
+                  <div class="timer-list-editor-header"><div class="settings-section-title">Popup detail lines</div><button id="timer-detail-add" class="settings-small-button" type="button">Add detail</button></div>
+                  <div id="timer-detail-list" class="timer-edit-list"></div>
+                </div>
+
+                <div class="timer-list-editor">
+                  <div class="timer-list-editor-header"><div class="settings-section-title">Popup image URLs</div><button id="timer-image-add" class="settings-small-button" type="button">Add image</button></div>
+                  <div id="timer-image-list" class="timer-edit-list"></div>
+                </div>
+
+                <div class="timer-list-editor">
+                  <div class="timer-list-editor-header"><div class="settings-section-title">AI image search ideas</div><button id="timer-image-query-add" class="settings-small-button" type="button">Add idea</button></div>
+                  <div id="timer-image-query-list" class="timer-edit-list"></div>
+                </div>
+              </div>
+
+              <div class="weather-config-actions">
+                <button id="timer-config-save" class="settings-reset" type="button">Save timers</button>
+                <button id="timer-config-reload" class="settings-small-button" type="button">Reload</button>
+              </div>
+              <div id="timer-config-status" class="settings-status"></div>
+            </section>
+
+            <section class="settings-page" data-settings-page="ai">
+              <div class="settings-section-title">AI enrichment</div>
+              <div class="settings-note">Use a free OpenRouter model, or any OpenAI-compatible endpoint, to enrich timer copy from the selected timer snippet and generate schedule-aware family messages. The API key is saved server-side in gitignored <code>ai-config.json</code> or can come from <code>OPENROUTER_API_KEY</code>.</div>
+              <div class="weather-config-panel">
+                <label class="settings-toggle"><input id="setting-ai-enabled" type="checkbox" /><span>Enable AI enrichment</span></label>
+                <label class="settings-field"><span>Provider</span><select id="setting-ai-provider"><option value="openrouter">OpenRouter</option><option value="openai-compatible">OpenAI-compatible</option></select></label>
+                <label class="settings-field"><span>Base URL</span><input id="setting-ai-base-url" type="text" placeholder="https://openrouter.ai/api/v1" /></label>
+                <label class="settings-field"><span>Model</span><select id="setting-ai-model"><option value="openrouter/free">OpenRouter free router</option><option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B free</option><option value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B free</option><option value="openai/gpt-oss-20b:free">GPT OSS 20B free</option><option value="openai/gpt-oss-120b:free">GPT OSS 120B free</option><option value="google/gemma-4-26b-a4b-it:free">Gemma 4 26B free</option><option value="qwen/qwen3-next-80b-a3b-instruct:free">Qwen3 Next 80B free</option></select></label>
+                <label class="settings-field"><span>API key</span><input id="setting-ai-api-key" type="password" autocomplete="off" placeholder="Leave blank to keep existing key" /></label>
+                <label class="settings-field"><span>App title</span><input id="setting-ai-app-title" type="text" maxlength="80" placeholder="Weekaroo" /></label>
+                <div class="settings-note" id="ai-config-key-status">AI key status: unknown</div>
+                <div class="weather-config-actions">
+                  <button id="ai-config-save" class="settings-reset" type="button">Save AI settings</button>
+                  <button id="ai-config-reload" class="settings-small-button" type="button">Reload</button>
+                </div>
+                <div id="ai-config-status" class="settings-status"></div>
+              </div>
+            </section>
+
+            <section class="settings-page" data-settings-page="motion">
+              <div class="settings-section-title">Motion and message bar</div>
+              <label class="settings-field"><span>Bottom bar speed</span><select id="setting-rotation-seconds"><option value="8">Fast, 8 seconds</option><option value="12">Normal, 12 seconds</option><option value="18">Slow, 18 seconds</option><option value="30">Very slow, 30 seconds</option></select></label>
+              <label class="settings-field"><span>Bottom bar mode</span><select id="setting-visual-mode"><option value="messages-animations">Messages + animations</option><option value="messages">Messages only</option><option value="animations">Animations only</option></select></label>
+              <label class="settings-toggle"><input id="setting-reduced-motion" type="checkbox" /><span>Reduce motion effects</span></label>
+              <label class="settings-toggle"><input id="setting-background-rotation" type="checkbox" /><span>Rotate background image hourly</span></label>
+            </section>
+
+            <section class="settings-page" data-settings-page="system">
+              <div class="settings-section-title">System</div>
+              <div class="settings-note">As this grows, settings stay split into pages with this left-side navigation. The next step can add search and deeper sub-pages for calendars, countdowns, and animations.</div>
+              <button id="settings-reset" class="settings-reset" type="button">Reset display settings</button>
+            </section>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="app.js?v=20260509-1245" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "messages": [
+    "Welcome to Weekaroo 🦘",
+    "Big week, tiny dashboard.",
+    "Check the weather before you bounce."
+  ],
+  "defaultMessages": [
+    "Open day ahead. Make it count.",
+    "Nothing urgent on the board today."
+  ],
+  "rules": [
+    {
+      "matchAny": ["practice", "game"],
+      "message": "Game day energy ⚾"
+    },
+    {
+      "matchAny": ["test", "quiz", "exam"],
+      "message": "Brain power day 🧠"
+    },
+    {
+      "matchAny": ["birthday"],
+      "message": "Birthday bounce 🎉"
+    }
+  ]
+}

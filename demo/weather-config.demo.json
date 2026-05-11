@@ -1,0 +1,12 @@
+{
+  "mode": "public",
+  "public": {
+    "zip": "10001",
+    "country": "US",
+    "label": "New York, NY"
+  },
+  "tempest": {
+    "stationId": "",
+    "token": ""
+  }
+}

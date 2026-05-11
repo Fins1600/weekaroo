@@ -1,0 +1,24 @@
+{
+  "rotationSeconds": 12,
+  "items": [
+    {
+      "id": "summer-trip",
+      "title": "Summer Trip",
+      "emoji": "✈️",
+      "target": "2026-07-01T00:00:00-07:00",
+      "subtitle": "Trip starts on July 1, 2026",
+      "heroTitle": "Adventure is getting closer",
+      "factsLabel": "Trip fun fact",
+      "facts": [
+        "Countdowns can include themed facts, images, and custom copy.",
+        "Use this for trips, holidays, school breaks, birthdays, and milestones."
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80"
+      ],
+      "showFromDaysBefore": 365,
+      "showUntilDaysAfter": 14,
+      "enabled": true
+    }
+  ]
+}

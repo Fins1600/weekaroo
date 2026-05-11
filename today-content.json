@@ -1,0 +1,41 @@
+{
+  "defaultJokes": [
+    {
+      "setup": "Why did the baseball team hire a musician?",
+      "punchline": "Because they needed a good pitch."
+    },
+    {
+      "setup": "Why did the calendar bring a ladder?",
+      "punchline": "It wanted to get to the next date."
+    },
+    {
+      "setup": "Why are teddy bears never hungry?",
+      "punchline": "Because they’re always stuffed."
+    },
+    {
+      "setup": "What do you call cheese that isn’t yours?",
+      "punchline": "Nacho cheese."
+    }
+  ],
+  "observances": {
+    "04-19": [
+      "National Garlic Day",
+      "National Amaretto Day",
+      "Hanging Out Day"
+    ]
+  },
+  "funFacts": {
+    "04-19": [
+      "April 19 usually lands in the heart of spring, when days are getting noticeably longer across the U.S.",
+      "By April 19, the year is more than a quarter complete, but it still somehow feels like January was last week.",
+      "Around this point in April, sunset has already stretched well past winter's early-evening darkness in most places."
+    ]
+  },
+  "sportsHistory": {
+    "04-19": [
+      "1897: The first Boston Marathon was run, launching one of the most famous races in the world.",
+      "1958: Montreal's Maurice Richard scored the final goal of his legendary NHL career.",
+      "1987: Michael Jordan dropped 61 points against the Atlanta Hawks during one of his early scoring explosions."
+    ]
+  }
+}

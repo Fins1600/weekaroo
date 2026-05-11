@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+*.pyo
+*.log
+calendars.json
+family-messages.json
+countdowns.json
+timers.json
+family-dashboard.desktop
+Family Dashboard.desktop
+Weekaroo.desktop
+*.desktop
+
+family-message.txt
+weather-config.json
+ai-config.json
+weather-history.json
+day-notes.local.json
+.env
+*.sqlite
+*.db

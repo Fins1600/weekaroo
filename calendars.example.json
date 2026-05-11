@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Family",
+    "url": "https://calendar.example.com/family.ics",
+    "color": "#7dd3c7"
+  },
+  {
+    "name": "School",
+    "url": "https://calendar.example.com/school.ics",
+    "color": "#f59e0b"
+  },
+  {
+    "name": "Sports",
+    "url": "https://calendar.example.com/sports.ics",
+    "color": "#3b82f6"
+  }
+]
