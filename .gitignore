@@ -15,6 +15,7 @@ family-message.txt
 weather-config.json
 ai-config.json
 weather-history.json
+day-notes.json
 day-notes.local.json
 .env
 *.sqlite

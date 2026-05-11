@@ -20,6 +20,7 @@ for file in \
   weather-config.json \
   ai-config.json \
   weather-history.json \
+  day-notes.json \
   family-dashboard.desktop \
   family-message.txt \
   server.log

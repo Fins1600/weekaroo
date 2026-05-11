@@ -14,7 +14,7 @@ Private dashboard source of truth:
 
 - `family-dashboard/`
 
-Do not publish the private repo or its git history. The public repo should start with a fresh git history from the sanitized directory.
+Do not publish the private repo or its git history. Public releases should continue to be built from the sanitized Weekaroo repository only.
 
 ## Sanitization rules
 
@@ -28,6 +28,7 @@ Exclude from public repo:
 - `weather-config.json`
 - `ai-config.json`
 - `weather-history.json`
+- `day-notes.json`
 - logs, caches, desktop launchers, generated files
 
 Replace private defaults with generic defaults:
@@ -37,31 +38,29 @@ Replace private defaults with generic defaults:
 - default public weather example: `10001`, `New York, NY`
 - personal/team-specific AI prompt rules removed
 
-## Pre-publication checklist
+## Completed
 
 - [x] Choose and add FOSS license: MIT
 - [x] Pick project/repo name: `weekaroo`
-- [ ] Run secret/privacy grep and manually review hits
-- [ ] Run smoke check: `python3 check_server.py`
-- [ ] Confirm README quick start works on a clean machine/account
-- [ ] Add screenshots that contain only synthetic data
 - [x] Add synthetic demo config for screenshots and public examples
 - [x] Add GitHub issue templates, PR template, and smoke-check workflow
-- [ ] Initialize a fresh git repo from `weekaroo/`
-- [ ] Create GitHub repo and push first public commit
+- [x] Initialize a fresh public git repo from `weekaroo/`
+- [x] Create GitHub repo and push public commits
+- [x] Replace tracked day notes with synthetic `day-notes.example.json`
+- [x] Add one-command demo mode
+- [x] Add Raspberry Pi / Linux kiosk setup guide
 
-## Near-term packaging improvements
+## Launch polish
 
-1. Add install docs for Raspberry Pi / Linux kiosk mode.
-2. Capture synthetic screenshots and save them in `docs/images/`.
-3. Create fresh GitHub repo and push sanitized first commit.
-4. Review first public release notes and tag `v0.1.0` when ready.
+- [ ] Run secret/privacy grep and manually review hits before release.
+- [ ] Run smoke check: `python3 check_server.py`.
+- [ ] Confirm README quick start works on a clean machine/account.
+- [ ] Add screenshots that contain only synthetic data.
+- [ ] Use a synthetic hero screenshot in README and release notes.
+- [ ] Review first public release notes and tag `v0.1.0` when ready.
 
 ## Future product work
 
-- GitHub issue templates
-- GitHub Actions smoke checks
 - Docker/container option
-- One-command demo mode
 - Settings export/import
 - Marketplace-style example themes
