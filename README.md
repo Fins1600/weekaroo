@@ -9,7 +9,14 @@ Weekaroo shows a weekly calendar, local weather, rotating notes, timers, countdo
 
 If you are comparing MagicMirror, DAKboard, a shared calendar screen, or a DIY Raspberry Pi kiosk, Weekaroo is the local-first option meant to be simple to run and easy to tweak.
 
-> Screenshot coming soon: the repo includes synthetic demo data, but no safe generated hero image is committed yet. See [`docs/SCREENSHOTS.md`](docs/SCREENSHOTS.md) before publishing screenshots.
+Screenshots:
+
+<img width="1913" height="942" alt="image" src="https://github.com/user-attachments/assets/3bf4ebe8-d2f7-4342-87d9-d0bfa60156d3" />
+
+<img width="1913" height="942" alt="image" src="https://github.com/user-attachments/assets/775dab2d-514f-41ed-ad69-7e4da8ef08b8" />
+
+<img width="1913" height="942" alt="image" src="https://github.com/user-attachments/assets/e79fb1f8-b7ca-4a2d-a811-11728fab236c" />
+
 
 ## Who this is for
 
