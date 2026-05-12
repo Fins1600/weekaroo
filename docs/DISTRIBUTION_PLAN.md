@@ -60,7 +60,7 @@ Replace private defaults with generic defaults:
 - [x] Add screenshots that contain only synthetic data.
 - [x] Use synthetic screenshots in README.
 - [x] Use synthetic screenshot in release notes.
-- [ ] Review first public release notes and tag `v0.1.0` when ready.
+- [x] Review first public release notes and tag `v0.1.0`.
 
 ## Future product work
 

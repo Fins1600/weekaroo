@@ -18,8 +18,8 @@
 - [x] Populate public GitHub wiki with quick start, configuration, screenshots/demo data, privacy/secrets, and FAQ pages.
 - [x] Confirm issue templates are present and valid YAML.
 - [x] Draft first GitHub release notes with screenshot.
-- [ ] Create first GitHub release.
-- [ ] Tag release `v0.1.0` when ready.
+- [x] Create first GitHub release.
+- [x] Tag release `v0.1.0`.
 
 ## Suggested first release notes
 
@@ -33,3 +33,5 @@ This first public release is aimed at people building a kitchen display, family 
 - Broad X, Reddit/forum, or Hacker News announcements should wait until the release exists.
 - Release notes should include a synthetic screenshot, quick-start command, privacy note, and wiki link.
 - Before tagging, confirm ignored local config files are not staged.
+
+Release URL: https://github.com/Fins1600/weekaroo/releases/tag/v0.1.0
