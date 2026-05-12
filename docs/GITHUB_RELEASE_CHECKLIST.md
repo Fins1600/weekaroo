@@ -10,13 +10,15 @@
 
 ## Before first public release
 
-- [ ] Run `scripts/audit-public.sh`.
-- [ ] Review README quick start on a clean checkout.
-- [ ] Add hero screenshot to README using only synthetic data.
+- [x] Run `scripts/audit-public.sh`.
+- [x] Review README quick start on a clean checkout.
+- [x] Add hero/screenshots to README using only synthetic data.
 - [x] Replace tracked day notes with synthetic example file.
 - [x] Add Raspberry Pi / kiosk guide.
-- [ ] Confirm issue templates render correctly.
-- [ ] Create first GitHub release with screenshot in release notes.
+- [x] Populate public GitHub wiki with quick start, configuration, screenshots/demo data, privacy/secrets, and FAQ pages.
+- [x] Confirm issue templates are present and valid YAML.
+- [x] Draft first GitHub release notes with screenshot.
+- [ ] Create first GitHub release.
 - [ ] Tag release `v0.1.0` when ready.
 
 ## Suggested first release notes
@@ -24,3 +26,10 @@
 Weekaroo is a local-first wall dashboard for the week ahead: ICS calendars, local weather, notes, timers, countdowns, and optional AI-generated messages on a screen you control.
 
 This first public release is aimed at people building a kitchen display, family wall calendar, classroom dashboard, roommate board, or Raspberry Pi kiosk. It runs without an account, keeps calendar/weather/API config local, and includes synthetic demo data for screenshots and testing.
+
+## Launch gate notes
+
+- The `v0.1.0` GitHub Release URL is the canonical launch URL.
+- Broad X, Reddit/forum, or Hacker News announcements should wait until the release exists.
+- Release notes should include a synthetic screenshot, quick-start command, privacy note, and wiki link.
+- Before tagging, confirm ignored local config files are not staged.

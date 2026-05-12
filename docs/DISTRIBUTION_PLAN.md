@@ -49,14 +49,17 @@ Replace private defaults with generic defaults:
 - [x] Replace tracked day notes with synthetic `day-notes.example.json`
 - [x] Add one-command demo mode
 - [x] Add Raspberry Pi / Linux kiosk setup guide
+- [x] Populate the public GitHub wiki with quick start, configuration, screenshot, privacy, and FAQ pages
+- [x] Add reviewed synthetic README screenshots via GitHub user attachments
 
 ## Launch polish
 
-- [ ] Run secret/privacy grep and manually review hits before release.
-- [ ] Run smoke check: `python3 check_server.py`.
-- [ ] Confirm README quick start works on a clean machine/account.
-- [ ] Add screenshots that contain only synthetic data.
-- [ ] Use a synthetic hero screenshot in README and release notes.
+- [x] Run secret/privacy grep and manually review hits before release.
+- [x] Run smoke check: `python3 check_server.py`.
+- [x] Confirm README quick start works on a clean machine/account.
+- [x] Add screenshots that contain only synthetic data.
+- [x] Use synthetic screenshots in README.
+- [x] Use synthetic screenshot in release notes.
 - [ ] Review first public release notes and tag `v0.1.0` when ready.
 
 ## Future product work

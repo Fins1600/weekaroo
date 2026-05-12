@@ -717,8 +717,12 @@ class Handler(SimpleHTTPRequestHandler):
             for cal in calendars:
                 if cal.get("enabled") is False:
                     continue
-                with urllib.request.urlopen(cal["url"], timeout=30) as resp:
-                    ics = resp.read().decode("utf-8", errors="ignore")
+                try:
+                    with urllib.request.urlopen(cal["url"], timeout=30) as resp:
+                        ics = resp.read().decode("utf-8", errors="ignore")
+                except Exception as exc:
+                    print(f"Calendar feed failed for {cal.get('name', 'calendar')}: {exc}", flush=True)
+                    ics = ""
                 payload.append({
                     "name": cal["name"],
                     "color": cal["color"],

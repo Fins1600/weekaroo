@@ -10,18 +10,18 @@
     "name": "Family",
     "url": "https://example.com/demo/family.ics",
     "color": "#7dd3c7",
-    "enabled": true
+    "enabled": false
   },
   {
     "name": "School",
     "url": "https://example.com/demo/school.ics",
     "color": "#f59e0b",
-    "enabled": true
+    "enabled": false
   },
   {
     "name": "Sports",
     "url": "https://example.com/demo/sports.ics",
     "color": "#3b82f6",
-    "enabled": true
+    "enabled": false
   }
 ]

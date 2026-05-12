@@ -4,7 +4,7 @@ All notable changes to Weekaroo will be documented in this file.
 
 The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses semantic versioning once public releases begin.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-05-12
 
 ### Added
 
@@ -17,6 +17,10 @@ The format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.
 - MIT License.
 - Public privacy audit script.
 - GitHub issue templates, pull request template, and smoke-check workflow.
+- Synthetic README screenshots and demo data for public evaluation.
+- Raspberry Pi and Linux kiosk setup guide.
+- Public GitHub wiki pages for quick start, configuration, screenshots, privacy, and FAQ.
+- Dashboard calendar loading now tolerates an unavailable feed instead of failing the whole week view.
 
 ### Security and privacy
 
