@@ -2856,3 +2856,27 @@ body[data-theme="light-glass"] .settings-field select option {
   background: #f7fffd;
   color: #10201d;
 }
+
+.settings-advanced {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.settings-advanced summary {
+  cursor: pointer;
+  color: var(--accent-strong);
+  font-weight: 800;
+  list-style-position: inside;
+}
+
+.settings-advanced[open] summary {
+  margin-bottom: 12px;
+}
+
+.ai-instructions-field textarea {
+  min-height: 180px;
+}

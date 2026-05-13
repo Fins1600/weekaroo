@@ -536,11 +536,11 @@ function syncAiConfigControls() {
   if (aiFamilyMessagePromptInput) aiFamilyMessagePromptInput.value = config.familyMessagePrompt || config.defaultFamilyMessagePrompt || "";
   if (aiApiKeyInput) {
     aiApiKeyInput.value = "";
-    aiApiKeyInput.placeholder = config.apiKeyMasked ? `Current key ${config.apiKeyMasked}, leave blank to keep` : "OpenRouter or compatible API key";
+    aiApiKeyInput.placeholder = config.hasApiKey ? "Existing key is saved, leave blank to keep it" : "OpenRouter or compatible API key";
   }
   if (aiConfigKeyStatus) {
     aiConfigKeyStatus.textContent = config.hasApiKey
-      ? `AI key status: configured via ${config.apiKeySource || "server"} ${config.apiKeyMasked || ""}`
+      ? `AI key status: configured via ${config.apiKeySource || "server"}`
       : "AI key status: not configured";
   }
 }
@@ -3059,7 +3059,7 @@ async function init() {
   aiConfigReloadButton?.addEventListener("click", loadAiConfig);
   aiPromptResetButton?.addEventListener("click", () => {
     if (aiFamilyMessagePromptInput) aiFamilyMessagePromptInput.value = aiConfig?.defaultFamilyMessagePrompt || "";
-    setAiConfigStatus("Default family message prompt restored locally. Save AI settings to keep it.", "warning");
+    setAiConfigStatus("Default AI instructions restored locally. Save AI settings to keep them.", "warning");
   });
   weatherBlock.addEventListener("click", openWeatherModal);
   timeBlock.addEventListener("click", openTodayModal);
