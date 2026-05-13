@@ -1,5 +1,9 @@
 # Weekaroo
 
+<p align="center">
+  <img src="assets/logo.svg" width="720" alt="Weekaroo logo, a calendar kangaroo mark with the text Weekaroo" />
+</p>
+
 [![Smoke check](https://github.com/Fins1600/weekaroo/actions/workflows/smoke.yml/badge.svg)](https://github.com/Fins1600/weekaroo/actions/workflows/smoke.yml)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 

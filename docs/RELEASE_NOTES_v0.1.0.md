@@ -1,8 +1,14 @@
 # Weekaroo v0.1.0: local-first wall dashboard for the week ahead
 
+<p align="center">
+  <img src="../assets/logo.svg" width="680" alt="Weekaroo logo, a calendar kangaroo mark with the text Weekaroo" />
+</p>
+
 Weekaroo is a self-hosted wall dashboard for families, roommates, classrooms, and small teams. It shows ICS calendars, local weather, notes, timers, countdowns, daily facts, and optional AI-generated dashboard messages on a screen you control.
 
 This first public release is aimed at people building a kitchen display, hallway calendar, classroom board, roommate dashboard, or Raspberry Pi kiosk.
+
+![Weekaroo social preview card](images/weekaroo-social-card.png)
 
 ![Weekaroo demo dashboard](https://github.com/user-attachments/assets/3bf4ebe8-d2f7-4342-87d9-d0bfa60156d3)
 

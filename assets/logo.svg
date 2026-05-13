@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">Weekaroo logo</title>
+  <desc id="desc">Weekaroo wordmark with a calendar kangaroo logo mark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="24" y1="24" x2="296" y2="296" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.52" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="warm" x1="106" y1="86" x2="240" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="type" x1="360" y1="86" x2="850" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#334155"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0f172a" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="320" rx="48" fill="#f8fafc"/>
+  <g transform="translate(38 38)">
+    <rect width="244" height="244" rx="58" fill="url(#bg)"/>
+    <g filter="url(#shadow)">
+      <rect x="50" y="56" width="144" height="136" rx="22" fill="#f8fafc"/>
+      <rect x="50" y="56" width="144" height="42" rx="22" fill="#0f172a"/>
+      <path d="M50 78h144v30H50z" fill="#0f172a"/>
+      <circle cx="82" cy="75" r="7" fill="#fbbf24"/>
+      <circle cx="162" cy="75" r="7" fill="#fbbf24"/>
+    </g>
+    <g>
+      <circle cx="76" cy="122" r="5" fill="#93c5fd"/>
+      <circle cx="100" cy="122" r="5" fill="#93c5fd"/>
+      <circle cx="124" cy="122" r="5" fill="#93c5fd"/>
+      <circle cx="148" cy="122" r="5" fill="#93c5fd"/>
+      <circle cx="172" cy="122" r="5" fill="#93c5fd"/>
+      <circle cx="88" cy="146" r="5" fill="#93c5fd"/>
+      <circle cx="112" cy="146" r="5" fill="#93c5fd"/>
+    </g>
+    <path d="M85 174c19-1 34-9 43-25 8-13 7-29-4-39 18-3 33 2 43 15 7 9 9 19 8 31l29 29c5 5 5 13 0 18s-13 5-18 0l-23-23c-13 15-30 23-52 23H86c-8 0-14-6-14-14 0-7 6-13 13-13z" fill="url(#warm)"/>
+    <path d="M132 107c8-17 22-28 40-31 5-1 10 5 7 10l-16 27c-3 5-10 7-15 4z" fill="#f59e0b"/>
+    <path d="M108 166c-17 8-27 20-31 38-1 6 5 11 10 7l31-22z" fill="#ea580c"/>
+    <circle cx="163" cy="101" r="4" fill="#0f172a"/>
+  </g>
+  <text x="338" y="167" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="96" font-weight="850" letter-spacing="-4" fill="url(#type)">Weekaroo</text>
+  <text x="344" y="225" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="30" font-weight="650" letter-spacing="0" fill="#475569">A local-first wall dashboard for the week ahead</text>
+  <g transform="translate(958 105)">
+    <rect x="0" y="0" width="154" height="110" rx="28" fill="#e0f2fe" stroke="#bae6fd" stroke-width="2"/>
+    <text x="28" y="44" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="800" fill="#0369a1">7 days</text>
+    <text x="28" y="76" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="800" fill="#0369a1">at a glance</text>
+  </g>
+</svg>
