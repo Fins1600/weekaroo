@@ -33,6 +33,7 @@ TODAY_OBSERVANCES_FILE = ROOT / "today-observances.json"
 TODAY_OFFICIAL_HOLIDAYS_FILE = ROOT / "today-official-holidays.json"
 TODAY_FUN_FACTS_FILE = ROOT / "today-fun-facts.json"
 TODAY_JOKES_FILE = ROOT / "today-jokes.json"
+DEFAULT_FAMILY_MESSAGE_AI_PROMPT = "Write warm, specific, playful one-line dashboard messages for our family. Mention real activities, timing, or weather details when useful. Keep the voice upbeat but not cheesy."
 FAMILY_MESSAGE_AI_PROMPTS = [
     {
         "id": "next-up",
@@ -72,7 +73,8 @@ DEFAULT_AI_CONFIG = {
     "model": "openai/gpt-oss-120b:free",
     "referer": "http://127.0.0.1:4020",
     "appTitle": "Weekaroo",
-    "apiKey": ""
+    "apiKey": "",
+    "familyMessagePrompt": DEFAULT_FAMILY_MESSAGE_AI_PROMPT
 }
 WEATHER_CODE_TEXT = {
     0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Cloudy",
@@ -301,7 +303,7 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 data = json.loads(AI_CONFIG_FILE.read_text())
                 if isinstance(data, dict):
-                    for key in ["enabled", "provider", "baseUrl", "model", "referer", "appTitle", "apiKey"]:
+                    for key in ["enabled", "provider", "baseUrl", "model", "referer", "appTitle", "apiKey", "familyMessagePrompt"]:
                         if key in data:
                             config[key] = data.get(key)
                     file_api_key = f"{data.get('apiKey') or ''}".strip()
@@ -318,6 +320,7 @@ class Handler(SimpleHTTPRequestHandler):
         config["model"] = f"{config.get('model') or DEFAULT_AI_CONFIG['model']}".strip()
         config["referer"] = f"{config.get('referer') or DEFAULT_AI_CONFIG['referer']}".strip()
         config["appTitle"] = f"{config.get('appTitle') or DEFAULT_AI_CONFIG['appTitle']}".strip()
+        config["familyMessagePrompt"] = self.clean_ai_text(config.get("familyMessagePrompt") or DEFAULT_FAMILY_MESSAGE_AI_PROMPT, 1000)
         config["apiKey"] = selected_api_key
         config["apiKeySource"] = api_key_source
 
@@ -328,6 +331,7 @@ class Handler(SimpleHTTPRequestHandler):
         api_key = safe.pop("apiKey", "")
         safe["hasApiKey"] = bool(api_key)
         safe["apiKeyMasked"] = f"••••{api_key[-4:]}" if api_key else ""
+        safe["defaultFamilyMessagePrompt"] = DEFAULT_FAMILY_MESSAGE_AI_PROMPT
         return safe
 
     def save_ai_config_payload(self, payload):
@@ -350,6 +354,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "model": f"{incoming.get('model') or existing.get('model') or DEFAULT_AI_CONFIG['model']}".strip(),
                 "referer": f"{incoming.get('referer') or existing.get('referer') or DEFAULT_AI_CONFIG['referer']}".strip(),
                 "appTitle": f"{incoming.get('appTitle') or existing.get('appTitle') or DEFAULT_AI_CONFIG['appTitle']}".strip(),
+                "familyMessagePrompt": self.clean_ai_text(incoming.get("familyMessagePrompt") or DEFAULT_FAMILY_MESSAGE_AI_PROMPT, 1000),
                 "apiKey": api_key
             }
             self.save_ai_config_payload(cleaned)
@@ -503,8 +508,11 @@ class Handler(SimpleHTTPRequestHandler):
             if not cleaned_events and not cleaned_notes and not has_weather_context:
                 return {"messages": [], "model": config.get("model"), "promptCount": prompt_count, "reason": "no schedule or weather context"}
 
+            custom_family_prompt = self.clean_ai_text(config.get("familyMessagePrompt") or DEFAULT_FAMILY_MESSAGE_AI_PROMPT, 1000)
+
             user_prompt = {
                 "task": "Generate family dashboard messages from the day's schedule and weather. Return strict JSON only.",
+                "customInstructions": custom_family_prompt,
                 "schedule": {
                     "dateLabel": date_label,
                     "weekday": weekday,
@@ -529,7 +537,8 @@ class Handler(SimpleHTTPRequestHandler):
                     "Do not give advice or make up private facts.",
                     "Use one tasteful emoji when it fits naturally.",
                     "Keep each message family-friendly, concise, and playful.",
-                    "Do not include markdown or commentary."
+                    "Do not include markdown or commentary.",
+                    "Follow customInstructions for tone and preferences, unless they conflict with privacy, JSON, length, or schedule-accuracy rules."
                 ],
                 "jsonShape": {
                     "messages": ["short message 1", "short message 2", "short message 3"]

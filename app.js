@@ -329,6 +329,8 @@ const aiBaseUrlInput = document.getElementById("setting-ai-base-url");
 const aiModelSelect = document.getElementById("setting-ai-model");
 const aiApiKeyInput = document.getElementById("setting-ai-api-key");
 const aiAppTitleInput = document.getElementById("setting-ai-app-title");
+const aiFamilyMessagePromptInput = document.getElementById("setting-ai-family-message-prompt");
+const aiPromptResetButton = document.getElementById("ai-prompt-reset");
 const aiConfigKeyStatus = document.getElementById("ai-config-key-status");
 const aiConfigSaveButton = document.getElementById("ai-config-save");
 const aiConfigReloadButton = document.getElementById("ai-config-reload");
@@ -523,13 +525,15 @@ function syncAiConfigControls() {
     provider: "openrouter",
     baseUrl: "https://openrouter.ai/api/v1",
     model: "openrouter/free",
-    appTitle: "Weekaroo"
+    appTitle: "Weekaroo",
+    familyMessagePrompt: "Write warm, specific, playful one-line dashboard messages for our family. Mention real activities, timing, or weather details when useful. Keep the voice upbeat but not cheesy."
   };
   if (aiEnabledInput) aiEnabledInput.checked = Boolean(config.enabled);
   if (aiProviderSelect) aiProviderSelect.value = config.provider || "openrouter";
   if (aiBaseUrlInput) aiBaseUrlInput.value = config.baseUrl || "https://openrouter.ai/api/v1";
   if (aiModelSelect) aiModelSelect.value = config.model || "openrouter/free";
   if (aiAppTitleInput) aiAppTitleInput.value = config.appTitle || "Weekaroo";
+  if (aiFamilyMessagePromptInput) aiFamilyMessagePromptInput.value = config.familyMessagePrompt || config.defaultFamilyMessagePrompt || "";
   if (aiApiKeyInput) {
     aiApiKeyInput.value = "";
     aiApiKeyInput.placeholder = config.apiKeyMasked ? `Current key ${config.apiKeyMasked}, leave blank to keep` : "OpenRouter or compatible API key";
@@ -564,6 +568,7 @@ async function saveAiConfig() {
     baseUrl: aiBaseUrlInput?.value?.trim() || "https://openrouter.ai/api/v1",
     model: aiModelSelect?.value || "openrouter/free",
     appTitle: aiAppTitleInput?.value?.trim() || "Weekaroo",
+    familyMessagePrompt: aiFamilyMessagePromptInput?.value?.trim() || aiConfig?.defaultFamilyMessagePrompt || "",
     apiKey: aiApiKeyInput?.value?.trim() || ""
   };
   setAiConfigStatus("Saving AI settings…");
@@ -3052,6 +3057,10 @@ async function init() {
   weatherConfigReloadButton?.addEventListener("click", loadWeatherConfig);
   aiConfigSaveButton?.addEventListener("click", saveAiConfig);
   aiConfigReloadButton?.addEventListener("click", loadAiConfig);
+  aiPromptResetButton?.addEventListener("click", () => {
+    if (aiFamilyMessagePromptInput) aiFamilyMessagePromptInput.value = aiConfig?.defaultFamilyMessagePrompt || "";
+    setAiConfigStatus("Default family message prompt restored locally. Save AI settings to keep it.", "warning");
+  });
   weatherBlock.addEventListener("click", openWeatherModal);
   timeBlock.addEventListener("click", openTodayModal);
   timeBlock.addEventListener("keydown", (event) => {

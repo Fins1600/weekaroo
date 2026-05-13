@@ -440,6 +440,11 @@
                 <label class="settings-field"><span>Model</span><select id="setting-ai-model"><option value="openrouter/free">OpenRouter free router</option><option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B free</option><option value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B free</option><option value="openai/gpt-oss-20b:free">GPT OSS 20B free</option><option value="openai/gpt-oss-120b:free">GPT OSS 120B free</option><option value="google/gemma-4-26b-a4b-it:free">Gemma 4 26B free</option><option value="qwen/qwen3-next-80b-a3b-instruct:free">Qwen3 Next 80B free</option></select></label>
                 <label class="settings-field"><span>API key</span><input id="setting-ai-api-key" type="password" autocomplete="off" placeholder="Leave blank to keep existing key" /></label>
                 <label class="settings-field"><span>App title</span><input id="setting-ai-app-title" type="text" maxlength="80" placeholder="Weekaroo" /></label>
+                <label class="settings-field"><span>Family message prompt</span><textarea id="setting-ai-family-message-prompt" maxlength="1000" rows="6" placeholder="Describe the voice and preferences for AI family messages..."></textarea></label>
+                <div class="settings-note">This customizes the schedule-aware messages in the bottom bar. Weekaroo still keeps hard safety rules for short JSON-only output, local times, and no private location details.</div>
+                <div class="weather-config-actions">
+                  <button id="ai-prompt-reset" class="settings-small-button" type="button">Reset prompt</button>
+                </div>
                 <div class="settings-note" id="ai-config-key-status">AI key status: unknown</div>
                 <div class="weather-config-actions">
                   <button id="ai-config-save" class="settings-reset" type="button">Save AI settings</button>
