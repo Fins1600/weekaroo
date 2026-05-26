@@ -25,6 +25,12 @@ If you are looking for a local calendar/weather wall display, I built Weekaroo f
 
 https://github.com/Fins1600/weekaroo/releases/tag/v0.1.0
 
+## Supporting launch assets
+
+- Comparison/positioning page: [`docs/COMPARISON.md`](COMPARISON.md)
+- Kitchen screen / Raspberry Pi post draft: [`docs/KITCHEN_SCREEN_LAUNCH_DRAFT.md`](KITCHEN_SCREEN_LAUNCH_DRAFT.md)
+- Screenshot carousel and demo GIF plan: [`docs/DEMO_VISUAL_PLAN.md`](DEMO_VISUAL_PLAN.md)
+
 ## Visual rule
 
 For standalone social posts, attach `docs/images/weekaroo-social-card.png` whenever the platform allows an image. For replies where an image would feel spammy, link the release and keep the wording specific to the thread.

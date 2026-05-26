@@ -13,7 +13,7 @@ const TIMERS_DATA_URL = "./timers-data";
 const AI_CONFIG_URL = "./ai-config";
 const TIMER_AI_ENRICH_URL = "./timer-ai-enrich";
 const SETTINGS_STORAGE_KEY = "familyDashboardSettings.v1";
-const FAMILY_MESSAGE_AI_CACHE_STORAGE_KEY = "familyDashboardAiFamilyMessages.v1";
+const FAMILY_MESSAGE_AI_CACHE_STORAGE_KEY = "familyDashboardAiFamilyMessages.v2";
 const DEFAULT_SETTINGS = {
   dashboardTitle: "Weekaroo",
   weatherTitle: "Local Weather",
@@ -27,6 +27,8 @@ const DEFAULT_SETTINGS = {
   overlayOpacity: 62,
   rotationSeconds: "12",
   visualMode: "messages-animations",
+  aiTodayHistoryMessages: true,
+  aiNoveltyDayMessages: true,
   reducedMotion: false,
   backgroundRotation: true
 };
@@ -274,6 +276,8 @@ const settingControls = {
   overlayOpacity: document.getElementById("setting-overlay-opacity"),
   rotationSeconds: document.getElementById("setting-rotation-seconds"),
   visualMode: document.getElementById("setting-visual-mode"),
+  aiTodayHistoryMessages: document.getElementById("setting-ai-today-history-messages"),
+  aiNoveltyDayMessages: document.getElementById("setting-ai-novelty-day-messages"),
   reducedMotion: document.getElementById("setting-reduced-motion"),
   backgroundRotation: document.getElementById("setting-background-rotation")
 };
@@ -326,14 +330,18 @@ const timerConfigStatus = document.getElementById("timer-config-status");
 const aiEnabledInput = document.getElementById("setting-ai-enabled");
 const aiProviderSelect = document.getElementById("setting-ai-provider");
 const aiBaseUrlInput = document.getElementById("setting-ai-base-url");
+const aiRefererInput = document.getElementById("setting-ai-referer");
 const aiModelSelect = document.getElementById("setting-ai-model");
 const aiApiKeyInput = document.getElementById("setting-ai-api-key");
 const aiAppTitleInput = document.getElementById("setting-ai-app-title");
 const aiFamilyMessagePromptInput = document.getElementById("setting-ai-family-message-prompt");
 const aiPromptResetButton = document.getElementById("ai-prompt-reset");
 const aiConfigKeyStatus = document.getElementById("ai-config-key-status");
+const aiConfigSourceStatus = document.getElementById("ai-config-source-status");
+const aiConfigTestButton = document.getElementById("ai-config-test");
 const aiConfigSaveButton = document.getElementById("ai-config-save");
 const aiConfigReloadButton = document.getElementById("ai-config-reload");
+const aiConfigResetAllButton = document.getElementById("ai-config-reset-all");
 const aiConfigStatus = document.getElementById("ai-config-status");
 const weatherConfigStatus = document.getElementById("weather-config-status");
 
@@ -406,6 +414,10 @@ function updateSettingFromControl(key, control) {
   dashboardSettings[key] = control.type === "checkbox" ? control.checked : control.value;
   saveSettings();
   applySettings();
+  if (key === "aiTodayHistoryMessages" || key === "aiNoveltyDayMessages") {
+    familyMessageAiCacheKey = "";
+    refreshAiFamilyMessages(true).catch(() => {});
+  }
 }
 
 function openSettingsModal() {
@@ -519,20 +531,41 @@ function setAiConfigStatus(message, tone = "") {
   else delete aiConfigStatus.dataset.tone;
 }
 
-function syncAiConfigControls() {
-  const config = aiConfig || {
+function getEffectiveAiDefaults() {
+  return {
     enabled: false,
     provider: "openrouter",
     baseUrl: "https://openrouter.ai/api/v1",
+    referer: "http://127.0.0.1:4020",
     model: "openrouter/free",
     appTitle: "Weekaroo",
-    familyMessagePrompt: "Write warm, specific, playful one-line dashboard messages for our family. Mention real activities, timing, or weather details when useful. Keep the voice upbeat but not cheesy."
+    familyMessagePrompt: aiConfig?.defaultFamilyMessagePrompt || ""
   };
+}
+
+function getAiConfigPayloadFromControls() {
+  const defaults = getEffectiveAiDefaults();
+  return {
+    enabled: Boolean(aiEnabledInput?.checked),
+    provider: aiProviderSelect?.value || defaults.provider,
+    baseUrl: aiBaseUrlInput?.value?.trim() || defaults.baseUrl,
+    referer: aiRefererInput?.value?.trim() || defaults.referer,
+    model: aiModelSelect?.value || defaults.model,
+    appTitle: aiAppTitleInput?.value?.trim() || defaults.appTitle,
+    familyMessagePrompt: aiFamilyMessagePromptInput?.value || defaults.familyMessagePrompt,
+    apiKey: aiApiKeyInput?.value?.trim() || ""
+  };
+}
+
+function syncAiConfigControls() {
+  const defaults = getEffectiveAiDefaults();
+  const config = { ...defaults, ...(aiConfig || {}) };
   if (aiEnabledInput) aiEnabledInput.checked = Boolean(config.enabled);
-  if (aiProviderSelect) aiProviderSelect.value = config.provider || "openrouter";
-  if (aiBaseUrlInput) aiBaseUrlInput.value = config.baseUrl || "https://openrouter.ai/api/v1";
-  if (aiModelSelect) aiModelSelect.value = config.model || "openrouter/free";
-  if (aiAppTitleInput) aiAppTitleInput.value = config.appTitle || "Weekaroo";
+  if (aiProviderSelect) aiProviderSelect.value = config.provider || defaults.provider;
+  if (aiBaseUrlInput) aiBaseUrlInput.value = config.baseUrl || defaults.baseUrl;
+  if (aiRefererInput) aiRefererInput.value = config.referer || defaults.referer;
+  if (aiModelSelect) aiModelSelect.value = config.model || defaults.model;
+  if (aiAppTitleInput) aiAppTitleInput.value = config.appTitle || defaults.appTitle;
   if (aiFamilyMessagePromptInput) aiFamilyMessagePromptInput.value = config.familyMessagePrompt || config.defaultFamilyMessagePrompt || "";
   if (aiApiKeyInput) {
     aiApiKeyInput.value = "";
@@ -542,6 +575,10 @@ function syncAiConfigControls() {
     aiConfigKeyStatus.textContent = config.hasApiKey
       ? `AI key status: configured via ${config.apiKeySource || "server"}`
       : "AI key status: not configured";
+  }
+  if (aiConfigSourceStatus) {
+    const source = config.familyMessagePromptSource || (config.hasCustomFamilyMessagePrompt ? "saved custom instructions" : "default instructions");
+    aiConfigSourceStatus.textContent = `AI instructions source: ${source}`;
   }
 }
 
@@ -562,15 +599,7 @@ async function loadAiConfig() {
 }
 
 async function saveAiConfig() {
-  const payload = {
-    enabled: Boolean(aiEnabledInput?.checked),
-    provider: aiProviderSelect?.value || "openrouter",
-    baseUrl: aiBaseUrlInput?.value?.trim() || "https://openrouter.ai/api/v1",
-    model: aiModelSelect?.value || "openrouter/free",
-    appTitle: aiAppTitleInput?.value?.trim() || "Weekaroo",
-    familyMessagePrompt: aiFamilyMessagePromptInput?.value?.trim() || aiConfig?.defaultFamilyMessagePrompt || "",
-    apiKey: aiApiKeyInput?.value?.trim() || ""
-  };
+  const payload = getAiConfigPayloadFromControls();
   setAiConfigStatus("Saving AI settings…");
   try {
     const response = await fetch(AI_CONFIG_URL, {
@@ -587,6 +616,30 @@ async function saveAiConfig() {
     console.error(error);
     setAiConfigStatus(error.message || "AI settings could not be saved.", "error");
   }
+}
+async function testAiConfig() {
+  const payload = getAiConfigPayloadFromControls();
+  setAiConfigStatus("Testing AI connection…");
+  try {
+    const response = await fetch(`${AI_CONFIG_URL}/test`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+    if (!response.ok || data.error || !data.ok) throw new Error(data.error || "AI connection test failed");
+    setAiConfigStatus(`AI connection works with ${data.model || payload.model}.`, "success");
+  } catch (error) {
+    console.error(error);
+    setAiConfigStatus(error.message || "AI connection test failed.", "error");
+  }
+}
+
+function resetAllAiSettingsLocally() {
+  const defaults = { ...getEffectiveAiDefaults(), ...(aiConfig?.defaultAiConfig || {}) };
+  aiConfig = { ...(aiConfig || {}), ...defaults, familyMessagePrompt: aiConfig?.defaultFamilyMessagePrompt || defaults.familyMessagePrompt };
+  syncAiConfigControls();
+  setAiConfigStatus("Default AI settings restored locally. Save AI settings to keep them.", "warning");
 }
 
 function getWeatherTheme(code) {
@@ -722,14 +775,7 @@ function getCountdownMetrics(item) {
   const diffDays = Math.round((targetDay - today) / (24 * 60 * 60 * 1000));
   const diffWeekdays = countWeekdaysBetween(today, targetDay);
   const totalHours = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60)));
-  const totalWeeks = Math.max(0, (diffDays / 7));
-  const showFromDaysBefore = Number(item.showFromDaysBefore ?? 365);
-  const startWindow = new Date(target);
-  startWindow.setDate(startWindow.getDate() - showFromDaysBefore);
-  const totalWindow = target - startWindow;
-  const elapsedWindow = Math.min(Math.max(0, now - startWindow), totalWindow);
-  const progressPct = totalWindow > 0 ? Math.round((elapsedWindow / totalWindow) * 100) : 0;
-  return { target, diffMs, diffDays, diffWeekdays, totalHours, totalWeeks, progressPct };
+  return { target, diffMs, diffDays, diffWeekdays, totalHours };
 }
 
 function countdownSummaryText(item, metrics) {
@@ -746,16 +792,36 @@ function countdownSummaryText(item, metrics) {
   return `${baseTitle} is underway`;
 }
 
-function buildCountdownMilestoneText(item, metrics) {
+function formatCountdownTargetDate(date, { includeWeekday = true, includeTime = true, compact = false } = {}) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "Not set";
+  const isMidnight = date.getHours() === 0 && date.getMinutes() === 0;
+  const options = compact
+    ? { weekday: includeWeekday ? "short" : undefined, month: "short", day: "numeric" }
+    : { weekday: includeWeekday ? "long" : undefined, month: "long", day: "numeric" };
+  const dateText = date.toLocaleDateString([], options);
+  if (!includeTime || isMidnight) return dateText;
+  return `${dateText} at ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+}
+
+function formatCountdownTimeLeft(metrics) {
+  if (metrics.diffMs <= 0) return "Happening now";
+  if (metrics.diffDays > 1) return `${metrics.diffDays.toLocaleString()} days`;
+  if (metrics.diffDays === 1) return "1 day";
+  if (metrics.totalHours > 1) return `${metrics.totalHours.toLocaleString()} hours`;
+  if (metrics.totalHours === 1) return "1 hour";
+  return "Less than 1 hour";
+}
+
+function buildCountdownTargetText(item, metrics) {
   const baseTitle = item.title.replace(/ Countdown$/i, "");
-  if (item.id === "last-day-of-school") {
-    if (metrics.diffWeekdays > 10) return `Only ${metrics.diffWeekdays - 10} school days until just 10 school days left ${item.emoji || "✨"}`;
-    if (metrics.diffWeekdays >= 0) return `Final stretch, just a handful of school days left ${item.emoji || "✨"}`;
-    return `${baseTitle} is here ${item.emoji || "✨"}`;
-  }
-  if (metrics.diffDays > 10) return `Only ${metrics.diffDays - 10} days until just 10 days to go ${item.emoji || "✨"}`;
-  if (metrics.diffDays >= 0) return `You are in the final stretch now ${item.emoji || "✨"}`;
-  return `${baseTitle} is happening now ${item.emoji || "✨"}`;
+  if (metrics.diffMs <= 0) return `${baseTitle} has started ${item.emoji || "✨"}`;
+  return `Target: ${formatCountdownTargetDate(metrics.target)}`;
+}
+
+function countdownStartTimeText(target) {
+  if (!(target instanceof Date) || Number.isNaN(target.getTime())) return "Not set";
+  if (target.getHours() === 0 && target.getMinutes() === 0) return "All day";
+  return target.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
 async function loadTimerConfig({ force = false } = {}) {
@@ -1397,15 +1463,17 @@ function openTimerModal(slotName) {
     timerStat4.textContent = metrics.totalHours.toLocaleString();
   } else {
     timerModalTotal.textContent = countdownSummaryText(active, metrics);
-    timerModalComparison.textContent = buildCountdownMilestoneText(active, metrics);
-    timerStat1Label.textContent = "Days to go";
-    timerStat1.textContent = `${Math.max(0, metrics.diffDays)}`;
-    timerStat2Label.textContent = "Weeks to go";
-    timerStat2.textContent = `${metrics.totalWeeks.toFixed(1)}`;
-    timerStat3Label.textContent = "Hours to go";
-    timerStat3.textContent = `${metrics.totalHours.toLocaleString()}`;
-    timerStat4Label.textContent = "Progress";
-    timerStat4.textContent = `${metrics.progressPct}% there`;
+    timerModalComparison.textContent = buildCountdownTargetText(active, metrics);
+    timerStat1Label.textContent = "Time left";
+    timerStat1.textContent = formatCountdownTimeLeft(metrics);
+    timerStat2Label.textContent = "Target date";
+    timerStat2.textContent = formatCountdownTargetDate(metrics.target, { compact: true, includeTime: false });
+    timerStat3Label.textContent = active.id === "last-day-of-school" ? "School days left" : "Day of week";
+    timerStat3.textContent = active.id === "last-day-of-school"
+      ? `${Math.max(0, metrics.diffWeekdays).toLocaleString()}`
+      : metrics.target.toLocaleDateString([], { weekday: "long" });
+    timerStat4Label.textContent = "Starts at";
+    timerStat4.textContent = countdownStartTimeText(metrics.target);
   }
   rotateTimerDetail();
   rotateTimerImage();
@@ -1456,11 +1524,53 @@ function formatFamilyMessageAiTime(event, field) {
   return value instanceof Date ? formatTime(value) : "";
 }
 
+function getFamilyMessageEventTimeContext(event) {
+  if (!event || isAllDay(event) || !(event.start instanceof Date)) {
+    return {
+      startHour: null,
+      dayPart: "all-day",
+      weatherTimingHint: "All-day event: use broad day weather, not a specific event-time temperature."
+    };
+  }
+
+  const startHour = event.start.getHours();
+  if (startHour >= 5 && startHour < 11) {
+    return {
+      startHour,
+      dayPart: "morning",
+      weatherTimingHint: "Morning event: avoid framing the afternoon high as happening during the event."
+    };
+  }
+  if (startHour >= 11 && startHour < 17) {
+    return {
+      startHour,
+      dayPart: "daytime",
+      weatherTimingHint: "Daytime event: the daily high can be relevant if heat or sun matters."
+    };
+  }
+  if (startHour >= 17 && startHour < 23) {
+    return {
+      startHour,
+      dayPart: "evening",
+      weatherTimingHint: "Evening event: prefer current/evening conditions or tonightLowF; do not describe the event as under midday heat or blazing sun."
+    };
+  }
+  return {
+    startHour,
+    dayPart: "overnight",
+    weatherTimingHint: "Late-night event: prefer tonightLowF/current conditions; do not use daytime heat or sun language."
+  };
+}
+
 function serializeFamilyMessageEvent(event) {
+  const timeContext = getFamilyMessageEventTimeContext(event);
   return {
     summary: `${event?.summary || ""}`.trim(),
     start: formatFamilyMessageAiTime(event, "start"),
     end: formatFamilyMessageAiTime(event, "end"),
+    startHour: timeContext.startHour,
+    dayPart: timeContext.dayPart,
+    weatherTimingHint: timeContext.weatherTimingHint,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "local",
     allDay: Boolean(isAllDay(event)),
     location: `${event?.location || ""}`.trim(),
@@ -1486,8 +1596,28 @@ function buildFamilyMessageWeatherContext() {
   const conditionText = `${data.conditionsText || todayForecast?.conditions || ""}`.trim();
   const tempF = roundFamilyMessageWeather(data.temperatureF);
   const feelsLikeF = roundFamilyMessageWeather(data.feelsLikeF ?? data.temperatureF);
-  const highF = roundFamilyMessageWeather(data.dailyHighF ?? todayForecast?.highF);
-  const lowF = roundFamilyMessageWeather(data.dailyLowF ?? todayForecast?.lowF);
+  const now = new Date();
+  const currentHour = now.getHours();
+  const todayKey = getDateKey(now);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowKey = getDateKey(tomorrow);
+  const todayHistory = data.historyDays?.[todayKey] || null;
+  const tomorrowForecast = Array.isArray(data.forecastDays)
+    ? data.forecastDays.find((day) => day?.date === tomorrowKey)
+    : null;
+  const dayHighF = roundFamilyMessageWeather(data.dailyHighF ?? todayForecast?.highF ?? todayHistory?.forecastHighF);
+  const todayLowF = roundFamilyMessageWeather(data.dailyLowF ?? todayForecast?.lowF ?? todayHistory?.forecastLowF);
+  const tonightLowF = roundFamilyMessageWeather(
+    currentHour >= 12
+      ? (tomorrowForecast?.lowF ?? todayLowF)
+      : todayLowF
+  );
+  const highF = dayHighF;
+  const lowF = tonightLowF ?? todayLowF;
+  const temperatureFocus = currentHour >= 18 || currentHour < 5
+    ? "If mentioning temperature, prefer tonightLowF as tonight's low; currentTempF is still useful context."
+    : "If mentioning temperature, prefer dayHighF as today's high; currentTempF is still useful context.";
   const windMph = roundFamilyMessageWeather(data.windAvgMph);
   const gustMph = roundFamilyMessageWeather(data.windGustMph);
   const rainChance = roundFamilyMessageWeather(todayForecast?.precipProbability);
@@ -1500,8 +1630,11 @@ function buildFamilyMessageWeatherContext() {
     conditions: conditionText,
     currentTempF: tempF,
     feelsLikeF,
+    dayHighF,
+    tonightLowF,
     highF,
     lowF,
+    temperatureFocus,
     windMph,
     gustMph,
     rainChancePercent: rainChance,
@@ -1510,7 +1643,8 @@ function buildFamilyMessageWeatherContext() {
     summary: [
       conditionText,
       tempF === null ? "" : `${tempF}° now`,
-      highF === null || lowF === null ? "" : `H ${highF}° / L ${lowF}°`,
+      dayHighF === null ? "" : `today's high ${dayHighF}°`,
+      tonightLowF === null ? "" : `tonight's low ${tonightLowF}°`,
       windMph === null ? "" : `wind ${windMph} mph${gustMph !== null && gustMph > windMph ? `, gust ${gustMph}` : ""}`,
       rainChance === null ? "" : `${rainChance}% rain chance`
     ].filter(Boolean).join(" • ")
@@ -1525,6 +1659,7 @@ function buildFamilyMessageAiContext() {
     .sort((a, b) => a.start - b.start);
   const notesForDay = Array.isArray(dayNotes[todayKey]) ? dayNotes[todayKey].filter((item) => item?.text?.trim()) : [];
   const upcomingEvents = todayEvents.filter((event) => event.end > now).slice(0, 4);
+  const todayHighlights = buildFamilyMessageTodayHighlights();
 
   return {
     dateKey: todayKey,
@@ -1534,6 +1669,7 @@ function buildFamilyMessageAiContext() {
     events: todayEvents.slice(0, 8).map(serializeFamilyMessageEvent),
     upcomingEvents: upcomingEvents.map(serializeFamilyMessageEvent),
     weather: buildFamilyMessageWeatherContext(),
+    todayHighlights,
     notes: notesForDay.slice(0, 4).map((note) => ({ text: `${note.text || ""}`.trim().slice(0, 140) })),
     existingMessages: [...configuredFamilyMessages.slice(0, 8)]
   };
@@ -1545,8 +1681,41 @@ function familyMessageAiCacheSignature(context) {
     events: context.events,
     notes: context.notes,
     upcomingEvents: context.upcomingEvents,
-    weather: context.weather
+    weather: context.weather,
+    todayHighlights: context.todayHighlights
   });
+}
+
+function buildFamilyMessageTodayHighlights() {
+  const content = todayContentCache;
+  if (!content || (!dashboardSettings.aiTodayHistoryMessages && !dashboardSettings.aiNoveltyDayMessages)) return null;
+  const highlights = {
+    enabled: true,
+    dateLabel: content.dateLabel || "Today"
+  };
+  if (dashboardSettings.aiTodayHistoryMessages) {
+    highlights.history = [content.sportsHistory, content.funFact]
+      .map((item) => `${item || ""}`.trim())
+      .filter(isUsefulFamilyMessageTodayHighlight)
+      .slice(0, 2);
+  }
+  if (dashboardSettings.aiNoveltyDayMessages) {
+    highlights.observances = [
+      ...(Array.isArray(content.officialHolidays) ? content.officialHolidays : []),
+      ...(Array.isArray(content.observances) ? content.observances : [])
+    ].map((item) => `${item || ""}`.trim()).filter(Boolean).slice(0, 4);
+  }
+  const joke = `${content.joke || ""}`.trim();
+  if (joke && joke.length <= 140 && !/(adult|nsfw|sex|drunk|beer|bar)/i.test(joke)) {
+    highlights.joke = joke;
+  }
+  return highlights;
+}
+
+function isUsefulFamilyMessageTodayHighlight(item) {
+  const text = `${item || ""}`.trim();
+  if (!text) return false;
+  return !/(\b\d{1,3}(st|nd|rd|th)?\s+day of the year\b|\bdays? (left|remaining) in the year\b|\bdays? until (the )?end of the year\b|\bGregorian calendar\b)/i.test(text);
 }
 
 function readCachedAiFamilyMessages(cacheKey) {
@@ -1589,6 +1758,14 @@ async function refreshAiFamilyMessages(force = false) {
     familyMessageAiCacheKey = "";
     buildFamilyMessages({ skipAiRefresh: true });
     return;
+  }
+
+  if ((dashboardSettings.aiTodayHistoryMessages || dashboardSettings.aiNoveltyDayMessages) && !todayContentCache) {
+    try {
+      await loadTodayContent();
+    } catch (error) {
+      console.warn("Today highlights could not be loaded for AI family messages:", error);
+    }
   }
 
   const context = buildFamilyMessageAiContext();
@@ -3057,6 +3234,8 @@ async function init() {
   weatherConfigReloadButton?.addEventListener("click", loadWeatherConfig);
   aiConfigSaveButton?.addEventListener("click", saveAiConfig);
   aiConfigReloadButton?.addEventListener("click", loadAiConfig);
+  aiConfigTestButton?.addEventListener("click", testAiConfig);
+  aiConfigResetAllButton?.addEventListener("click", resetAllAiSettingsLocally);
   aiPromptResetButton?.addEventListener("click", () => {
     if (aiFamilyMessagePromptInput) aiFamilyMessagePromptInput.value = aiConfig?.defaultFamilyMessagePrompt || "";
     setAiConfigStatus("Default AI instructions restored locally. Save AI settings to keep them.", "warning");

@@ -432,29 +432,41 @@
 
             <section class="settings-page" data-settings-page="ai">
               <div class="settings-section-title">AI</div>
-              <div class="settings-note">Configure the AI used for timer enrichment and schedule-aware family messages. The API key is saved server-side in gitignored <code>ai-config.json</code> or can come from <code>OPENROUTER_API_KEY</code>.</div>
+              <div class="settings-note">Configure every user-editable AI setting from here. Settings are saved server-side in gitignored <code>ai-config.json</code>; API keys may also come from <code>OPENROUTER_API_KEY</code>.</div>
               <div class="weather-config-panel ai-config-panel">
-                <label class="settings-toggle"><input id="setting-ai-enabled" type="checkbox" /><span>Enable AI features</span></label>
-                <label class="settings-field"><span>API key</span><input id="setting-ai-api-key" type="password" autocomplete="off" placeholder="Leave blank to keep the existing key" /></label>
-                <div class="settings-note" id="ai-config-key-status">AI key status: unknown</div>
+                <div class="ai-config-group">
+                  <div class="settings-section-title settings-section-subtitle">Basic</div>
+                  <label class="settings-toggle"><input id="setting-ai-enabled" type="checkbox" /><span>Enable AI features</span></label>
+                  <label class="settings-field"><span>API key</span><input id="setting-ai-api-key" type="password" autocomplete="off" placeholder="Leave blank to keep the existing key" /></label>
+                  <label class="settings-field"><span>Model</span><select id="setting-ai-model"><option value="openrouter/free">OpenRouter free router</option><option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B free</option><option value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B free</option><option value="openai/gpt-oss-20b:free">GPT OSS 20B free</option><option value="openai/gpt-oss-120b:free">GPT OSS 120B free</option><option value="google/gemma-4-26b-a4b-it:free">Gemma 4 26B free</option><option value="qwen/qwen3-next-80b-a3b-instruct:free">Qwen3 Next 80B free</option></select></label>
+                  <div class="settings-note" id="ai-config-key-status">AI key status: unknown</div>
+                  <div class="settings-note" id="ai-config-source-status">AI instructions source: unknown</div>
+                  <div class="weather-config-actions">
+                    <button id="ai-config-test" class="settings-small-button" type="button">Test AI connection</button>
+                  </div>
+                </div>
 
-                <label class="settings-field ai-instructions-field"><span>AI custom instructions</span><textarea id="setting-ai-family-message-prompt" maxlength="1000" rows="8" placeholder="Example: Write warm, specific, playful one-line dashboard messages. Mention real activities, timing, or weather when useful. Keep it upbeat but not cheesy."></textarea></label>
-                <div class="settings-note">These instructions customize the family-message voice in the bottom bar. Weekaroo still enforces short JSON-only output, local times, and no precise location details.</div>
-                <div class="weather-config-actions">
-                  <button id="ai-prompt-reset" class="settings-small-button" type="button">Reset instructions</button>
+                <div class="ai-config-group">
+                  <div class="settings-section-title settings-section-subtitle">Instructions</div>
+                  <label class="settings-field ai-instructions-field"><span>Family message instructions</span><textarea id="setting-ai-family-message-prompt" maxlength="4000" rows="14" spellcheck="true" placeholder="Load or reset to see the full default instructions."></textarea></label>
+                  <div class="settings-note">These are the full editable family-message instructions shown to the AI. Weekaroo still enforces short JSON-only output, local times, and no precise location details.</div>
+                  <div class="weather-config-actions">
+                    <button id="ai-prompt-reset" class="settings-small-button" type="button">Restore default instructions</button>
+                  </div>
                 </div>
 
                 <details class="settings-advanced">
                   <summary>Advanced provider settings</summary>
                   <label class="settings-field"><span>Provider</span><select id="setting-ai-provider"><option value="openrouter">OpenRouter</option><option value="openai-compatible">OpenAI-compatible</option></select></label>
                   <label class="settings-field"><span>Base URL</span><input id="setting-ai-base-url" type="text" placeholder="https://openrouter.ai/api/v1" /></label>
-                  <label class="settings-field"><span>Model</span><select id="setting-ai-model"><option value="openrouter/free">OpenRouter free router</option><option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B free</option><option value="meta-llama/llama-3.2-3b-instruct:free">Llama 3.2 3B free</option><option value="openai/gpt-oss-20b:free">GPT OSS 20B free</option><option value="openai/gpt-oss-120b:free">GPT OSS 120B free</option><option value="google/gemma-4-26b-a4b-it:free">Gemma 4 26B free</option><option value="qwen/qwen3-next-80b-a3b-instruct:free">Qwen3 Next 80B free</option></select></label>
+                  <label class="settings-field"><span>HTTP referer</span><input id="setting-ai-referer" type="text" maxlength="200" placeholder="http://127.0.0.1:4020" /></label>
                   <label class="settings-field"><span>App title</span><input id="setting-ai-app-title" type="text" maxlength="80" placeholder="Weekaroo" /></label>
                 </details>
 
                 <div class="weather-config-actions">
                   <button id="ai-config-save" class="settings-reset" type="button">Save AI settings</button>
                   <button id="ai-config-reload" class="settings-small-button" type="button">Reload</button>
+                  <button id="ai-config-reset-all" class="settings-small-button" type="button">Reset all AI settings</button>
                 </div>
                 <div id="ai-config-status" class="settings-status"></div>
               </div>
@@ -464,6 +476,8 @@
               <div class="settings-section-title">Motion and message bar</div>
               <label class="settings-field"><span>Bottom bar speed</span><select id="setting-rotation-seconds"><option value="8">Fast, 8 seconds</option><option value="12">Normal, 12 seconds</option><option value="18">Slow, 18 seconds</option><option value="30">Very slow, 30 seconds</option></select></label>
               <label class="settings-field"><span>Bottom bar mode</span><select id="setting-visual-mode"><option value="messages-animations">Messages + animations</option><option value="messages">Messages only</option><option value="animations">Animations only</option></select></label>
+              <label class="settings-toggle"><input id="setting-ai-today-history-messages" type="checkbox" /><span>Let AI use today-in-history highlights in the message bar</span></label>
+              <label class="settings-toggle"><input id="setting-ai-novelty-day-messages" type="checkbox" /><span>Let AI use holidays and novelty days in the message bar</span></label>
               <label class="settings-toggle"><input id="setting-reduced-motion" type="checkbox" /><span>Reduce motion effects</span></label>
               <label class="settings-toggle"><input id="setting-background-rotation" type="checkbox" /><span>Rotate background image hourly</span></label>
             </section>
@@ -478,6 +492,6 @@
       </section>
     </div>
 
-    <script src="app.js?v=20260513-0745" type="module"></script>
+    <script src="app.js?v=20260522-1841" type="module"></script>
   </body>
 </html>

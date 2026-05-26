@@ -163,6 +163,8 @@ API keys are never returned to the browser by the built-in settings endpoints.
 - **DAKboard and hosted dashboards:** easier hosted setup; Weekaroo keeps config local and does not require a dashboard subscription.
 - **Plain shared calendar:** simpler; Weekaroo starts making sense when you want calendar + weather + notes + timers + countdowns on one always-on screen.
 
+For a fuller positioning guide, see [`docs/COMPARISON.md`](docs/COMPARISON.md).
+
 ## Development
 
 Run directly:

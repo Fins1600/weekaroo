@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import json
 import math
 import os
+import re
 import urllib.error
 import urllib.request
 
@@ -33,7 +34,39 @@ TODAY_OBSERVANCES_FILE = ROOT / "today-observances.json"
 TODAY_OFFICIAL_HOLIDAYS_FILE = ROOT / "today-official-holidays.json"
 TODAY_FUN_FACTS_FILE = ROOT / "today-fun-facts.json"
 TODAY_JOKES_FILE = ROOT / "today-jokes.json"
-DEFAULT_FAMILY_MESSAGE_AI_PROMPT = "Write warm, specific, playful one-line dashboard messages for our family. Mention real activities, timing, or weather details when useful. Keep the voice upbeat but not cheesy."
+LEGACY_FAMILY_MESSAGE_AI_PROMPT = "Write warm, specific, playful one-line dashboard messages for our family. Mention real activities, timing, or weather details when useful. Keep the voice upbeat but not cheesy."
+DEFAULT_FAMILY_MESSAGE_AI_PROMPT = """Write warm, specific, playful one-line dashboard messages for our family. Mention real activities, timing, or weather details when useful. Keep the voice upbeat but not cheesy.
+
+Prompt angles:
+- Next up: Write one punchy family-message line for the next event or busiest block. Max 80 characters. Warm, specific, and playful. One emoji is welcome.
+- Day rhythm: Write one creative headline for today's rhythm from the schedule. Max 80 characters. Mention a concrete activity. One emoji is welcome.
+- Spotlight: Write one fresh, non-generic spotlight line for the standout activity. Max 80 characters. Use a fitting emoji if natural.
+- Board note: Write one clever kitchen-board note based only on today's activities. Max 80 characters. Friendly, concise, and emoji-friendly.
+
+Requirements:
+- Return between 3 and 6 short messages.
+- Each message must be 90 characters or fewer and fit on one dashboard line.
+- Each message must be unique, creative, and based on the schedule, weather, or both.
+- Blend weather with events when it is useful, for example heat before an afternoon game or rain before errands.
+- Match weather language to the event time. For evening or night events, do not describe the event as happening under blazing sun or midday heat just because the daily high was hot.
+- For evening or night events, prefer current/evening conditions or tonightLowF. If referencing dayHighF, frame it as earlier-day context, for example after a hot day.
+- Use the weather object as already-normalized local weather from either Tempest or ZIP forecast.
+- Do not mention missing weather fields, only use weather values that are present.
+- Mention real activities, transitions, timing, or weather details from the provided context.
+- When enabled in display settings, todayHighlights may include this-day-in-history facts, fun facts, holidays, novelty days, or a joke of the day. Use them only when they make a brief, fun message-bar line.
+- If todayHighlights.joke is present and it fits naturally within the line limit, you may include one joke-style message. Do not force it.
+- Do not invent holidays, historical facts, dates, or observances. Use only supplied todayHighlights values.
+- Counts and count-ups are allowed when they are meaningful, for example an anniversary, birthday, streak, milestone, game/season count, school countdown, or event-specific countdown.
+- Never produce generic calendar-countdown filler such as "223 days left in the year", "the 143rd day of the year", or Gregorian-calendar trivia. Those are not useful dashboard messages.
+- Use event times exactly as provided. Do not convert, offset, or infer another timezone.
+- Do not include addresses, street names, venue addresses, or precise location details.
+- Do not give advice or make up private facts.
+- Do not write reminder/nag/prep-advice lines such as pack a snack, bring water, grab sunscreen, wear a jacket, do not forget, remember to, or similar unless that exact item is explicitly in the schedule or notes.
+- Prefer descriptive, upbeat status lines over instructions to the family.
+- Use one tasteful emoji when it fits naturally.
+- Keep each message family-friendly, concise, and playful.
+- Do not include markdown or commentary.
+- Follow these instructions for tone and preferences unless they conflict with privacy, JSON, length, or schedule-accuracy rules."""
 FAMILY_MESSAGE_AI_PROMPTS = [
     {
         "id": "next-up",
@@ -144,6 +177,9 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if parsed.path == "/ai-config":
             self.save_ai_config()
+            return
+        if parsed.path == "/ai-config/test":
+            self.test_ai_config()
             return
         if parsed.path == "/timer-ai-enrich":
             self.enrich_timer_with_ai()
@@ -299,6 +335,7 @@ class Handler(SimpleHTTPRequestHandler):
     def load_ai_config_payload(self, include_secret=False, include_env=True):
         config = json.loads(json.dumps(DEFAULT_AI_CONFIG))
         file_api_key = ""
+        has_custom_family_prompt = False
         if AI_CONFIG_FILE.exists():
             try:
                 data = json.loads(AI_CONFIG_FILE.read_text())
@@ -306,6 +343,7 @@ class Handler(SimpleHTTPRequestHandler):
                     for key in ["enabled", "provider", "baseUrl", "model", "referer", "appTitle", "apiKey", "familyMessagePrompt"]:
                         if key in data:
                             config[key] = data.get(key)
+                    has_custom_family_prompt = bool(f"{data.get('familyMessagePrompt') or ''}".strip())
                     file_api_key = f"{data.get('apiKey') or ''}".strip()
             except Exception:
                 pass
@@ -320,7 +358,12 @@ class Handler(SimpleHTTPRequestHandler):
         config["model"] = f"{config.get('model') or DEFAULT_AI_CONFIG['model']}".strip()
         config["referer"] = f"{config.get('referer') or DEFAULT_AI_CONFIG['referer']}".strip()
         config["appTitle"] = f"{config.get('appTitle') or DEFAULT_AI_CONFIG['appTitle']}".strip()
-        config["familyMessagePrompt"] = self.clean_ai_text(config.get("familyMessagePrompt") or DEFAULT_FAMILY_MESSAGE_AI_PROMPT, 1000)
+        config["familyMessagePrompt"] = self.clean_ai_instructions(config.get("familyMessagePrompt") or DEFAULT_FAMILY_MESSAGE_AI_PROMPT)
+        if config["familyMessagePrompt"] == LEGACY_FAMILY_MESSAGE_AI_PROMPT:
+            config["familyMessagePrompt"] = DEFAULT_FAMILY_MESSAGE_AI_PROMPT
+            has_custom_family_prompt = False
+        config["hasCustomFamilyMessagePrompt"] = has_custom_family_prompt
+        config["familyMessagePromptSource"] = "saved custom instructions" if has_custom_family_prompt else "default instructions"
         config["apiKey"] = selected_api_key
         config["apiKeySource"] = api_key_source
 
@@ -332,6 +375,9 @@ class Handler(SimpleHTTPRequestHandler):
         safe["hasApiKey"] = bool(api_key)
         safe["apiKeyMasked"] = f"••••{api_key[-4:]}" if api_key else ""
         safe["defaultFamilyMessagePrompt"] = DEFAULT_FAMILY_MESSAGE_AI_PROMPT
+        default_ai_config = json.loads(json.dumps(DEFAULT_AI_CONFIG))
+        default_ai_config.pop("apiKey", None)
+        safe["defaultAiConfig"] = default_ai_config
         return safe
 
     def save_ai_config_payload(self, payload):
@@ -354,13 +400,69 @@ class Handler(SimpleHTTPRequestHandler):
                 "model": f"{incoming.get('model') or existing.get('model') or DEFAULT_AI_CONFIG['model']}".strip(),
                 "referer": f"{incoming.get('referer') or existing.get('referer') or DEFAULT_AI_CONFIG['referer']}".strip(),
                 "appTitle": f"{incoming.get('appTitle') or existing.get('appTitle') or DEFAULT_AI_CONFIG['appTitle']}".strip(),
-                "familyMessagePrompt": self.clean_ai_text(incoming.get("familyMessagePrompt") or DEFAULT_FAMILY_MESSAGE_AI_PROMPT, 1000),
+                "familyMessagePrompt": self.normalize_family_message_prompt(incoming.get("familyMessagePrompt") or DEFAULT_FAMILY_MESSAGE_AI_PROMPT),
                 "apiKey": api_key
             }
             self.save_ai_config_payload(cleaned)
             self.serve_json(self.load_ai_config_payload(include_secret=False))
         except Exception as exc:
             self.serve_json({"error": str(exc)}, status=500)
+
+    def test_ai_config(self):
+        try:
+            incoming = self.read_request_json()
+            existing = self.load_ai_config_payload(include_secret=True, include_env=False)
+            api_key = f"{incoming.get('apiKey') or existing.get('apiKey') or ''}".strip()
+            if not api_key:
+                self.serve_json({"ok": False, "error": "AI API key is missing. Add one or set OPENROUTER_API_KEY."}, status=400)
+                return
+            provider = f"{incoming.get('provider') or existing.get('provider') or DEFAULT_AI_CONFIG['provider']}".strip()
+            base_url = f"{incoming.get('baseUrl') or existing.get('baseUrl') or DEFAULT_AI_CONFIG['baseUrl']}".strip().rstrip("/")
+            model = f"{incoming.get('model') or existing.get('model') or DEFAULT_AI_CONFIG['model']}".strip()
+            referer = f"{incoming.get('referer') or existing.get('referer') or DEFAULT_AI_CONFIG['referer']}".strip()
+            app_title = f"{incoming.get('appTitle') or existing.get('appTitle') or DEFAULT_AI_CONFIG['appTitle']}".strip()
+            body = json.dumps({
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "Reply with strict JSON only."},
+                    {"role": "user", "content": "Return {\"ok\":true}."}
+                ],
+                "temperature": 0,
+                "max_tokens": 20,
+                "response_format": {"type": "json_object"}
+            }).encode("utf-8")
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+            if provider == "openrouter":
+                headers["HTTP-Referer"] = referer or DEFAULT_AI_CONFIG["referer"]
+                headers["X-OpenRouter-Title"] = app_title or DEFAULT_AI_CONFIG["appTitle"]
+            req = urllib.request.Request(f"{base_url}/chat/completions", data=body, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=20) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            self.serve_json({"ok": True, "model": payload.get("model") or model})
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", "ignore")[:300]
+            self.serve_json({"ok": False, "error": f"AI provider returned HTTP {exc.code}: {detail}"}, status=502)
+        except Exception as exc:
+            self.serve_json({"ok": False, "error": str(exc)}, status=500)
+
+    def normalize_family_message_prompt(self, value):
+        prompt = self.clean_ai_instructions(value or DEFAULT_FAMILY_MESSAGE_AI_PROMPT)
+        if prompt == LEGACY_FAMILY_MESSAGE_AI_PROMPT:
+            return DEFAULT_FAMILY_MESSAGE_AI_PROMPT
+        return prompt
+
+    def clean_ai_instructions(self, value, limit=4000):
+        text = f"{value or ''}".replace("\r\n", "\n").replace("\r", "\n").strip()
+        lines = [" ".join(line.split()) for line in text.split("\n")]
+        while lines and not lines[0]:
+            lines.pop(0)
+        while lines and not lines[-1]:
+            lines.pop()
+        cleaned = "\n".join(lines)
+        return cleaned[:limit]
 
     def clean_ai_text(self, value, limit=140):
         text = f"{value or ''}".strip()
@@ -411,11 +513,29 @@ class Handler(SimpleHTTPRequestHandler):
                 text = self.clean_ai_text(message.get("text") or message.get("message") or message.get("content"), 90)
             else:
                 text = self.clean_ai_text(message, 90)
+            if self.is_low_value_family_message(text):
+                continue
             if text and text not in cleaned:
                 cleaned.append(text)
             if len(cleaned) >= 6:
                 break
         return cleaned
+
+    def is_low_value_family_message(self, text):
+        value = f"{text or ''}".strip().lower()
+        if not value:
+            return True
+        prep_patterns = [
+            r"\bpack (a |the |some )?(snack|snacks|lunch|bag|backpack)\b",
+            r"\bbring (a |the |some )?(water|water bottle|snack|snacks|sunscreen|jacket|hat)\b",
+            r"\bgrab (a |the |some )?(water|water bottle|snack|snacks|sunscreen|jacket|hat)\b",
+            r"\bwear (a |the )?(jacket|hat|sunscreen|layers)\b",
+            r"\b(don't|do not) forget\b",
+            r"\bremember to\b",
+            r"\bmake sure to\b",
+            r"\bstay hydrated\b"
+        ]
+        return any(re.search(pattern, value) for pattern in prep_patterns)
 
     def clean_family_message_event(self, event):
         if not isinstance(event, dict):
@@ -424,6 +544,9 @@ class Handler(SimpleHTTPRequestHandler):
             "summary": self.clean_ai_text(event.get("summary"), 90),
             "start": self.clean_ai_text(event.get("start"), 40),
             "end": self.clean_ai_text(event.get("end"), 40),
+            "startHour": event.get("startHour") if isinstance(event.get("startHour"), int) and 0 <= event.get("startHour") <= 23 else None,
+            "dayPart": self.clean_ai_text(event.get("dayPart"), 24),
+            "weatherTimingHint": self.clean_ai_text(event.get("weatherTimingHint"), 180),
             "allDay": bool(event.get("allDay")),
             "location": "",
             "description": "",
@@ -434,6 +557,16 @@ class Handler(SimpleHTTPRequestHandler):
         if not isinstance(note, dict):
             return ""
         return self.clean_ai_text(note.get("text"), 140)
+
+    def clean_family_message_today_highlights(self, highlights):
+        if not isinstance(highlights, dict):
+            return {}
+        return {
+            "dateLabel": self.clean_ai_text(highlights.get("dateLabel"), 80),
+            "history": self.clean_ai_list(highlights.get("history"), limit=2, item_limit=160),
+            "observances": self.clean_ai_list(highlights.get("observances"), limit=4, item_limit=80),
+            "joke": self.clean_ai_text(highlights.get("joke"), 140)
+        }
 
     def clean_family_message_weather(self, weather):
         if not isinstance(weather, dict):
@@ -457,8 +590,11 @@ class Handler(SimpleHTTPRequestHandler):
             "conditions": self.clean_ai_text(weather.get("conditions"), 60),
             "currentTempF": clean_number(weather.get("currentTempF")),
             "feelsLikeF": clean_number(weather.get("feelsLikeF")),
+            "dayHighF": clean_number(weather.get("dayHighF")),
+            "tonightLowF": clean_number(weather.get("tonightLowF")),
             "highF": clean_number(weather.get("highF")),
             "lowF": clean_number(weather.get("lowF")),
+            "temperatureFocus": self.clean_ai_text(weather.get("temperatureFocus"), 180),
             "windMph": clean_number(weather.get("windMph")),
             "gustMph": clean_number(weather.get("gustMph")),
             "rainChancePercent": clean_number(weather.get("rainChancePercent")),
@@ -485,6 +621,7 @@ class Handler(SimpleHTTPRequestHandler):
             notes = schedule.get("notes") if isinstance(schedule.get("notes"), list) else []
             events = schedule.get("events") if isinstance(schedule.get("events"), list) else []
             weather = self.clean_family_message_weather(schedule.get("weather"))
+            today_highlights = self.clean_family_message_today_highlights(schedule.get("todayHighlights"))
             prompt_count = request_payload.get("messageCount")
             try:
                 prompt_count = max(3, min(int(prompt_count or 4), 6))
@@ -502,13 +639,14 @@ class Handler(SimpleHTTPRequestHandler):
 
             has_weather_context = any(
                 weather.get(key) is not None and weather.get(key) != ""
-                for key in ["conditions", "currentTempF", "feelsLikeF", "highF", "lowF", "windMph", "rainChancePercent", "summary"]
+                for key in ["conditions", "currentTempF", "feelsLikeF", "dayHighF", "tonightLowF", "highF", "lowF", "windMph", "rainChancePercent", "summary"]
             )
+            has_today_context = bool(today_highlights.get("history") or today_highlights.get("observances") or today_highlights.get("joke"))
 
-            if not cleaned_events and not cleaned_notes and not has_weather_context:
+            if not cleaned_events and not cleaned_notes and not has_weather_context and not has_today_context:
                 return {"messages": [], "model": config.get("model"), "promptCount": prompt_count, "reason": "no schedule or weather context"}
 
-            custom_family_prompt = self.clean_ai_text(config.get("familyMessagePrompt") or DEFAULT_FAMILY_MESSAGE_AI_PROMPT, 1000)
+            custom_family_prompt = self.normalize_family_message_prompt(config.get("familyMessagePrompt") or DEFAULT_FAMILY_MESSAGE_AI_PROMPT)
 
             user_prompt = {
                 "task": "Generate family dashboard messages from the day's schedule and weather. Return strict JSON only.",
@@ -519,6 +657,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "events": cleaned_events,
                     "notes": cleaned_notes,
                     "weather": weather,
+                    "todayHighlights": today_highlights,
                     "messageCount": prompt_count,
                     "timePolicy": "Event start/end values are already local dashboard display times. Do not convert time zones or reinterpret them as UTC."
                 },
@@ -528,13 +667,26 @@ class Handler(SimpleHTTPRequestHandler):
                     "Each message must be 90 characters or fewer and fit on one dashboard line.",
                     "Each message must be unique, creative, and based on the schedule, weather, or both.",
                     "Blend weather with events when it is useful, for example heat before an afternoon game or rain before errands.",
+                    "Keep currentTempF as context, but when a message mentions temperature, prefer dayHighF for daytime heat or tonightLowF for evening/night cooldown because those are more understandable.",
+                    "Follow weather.temperatureFocus when present; it tells you whether today's high or tonight's low is the better temperature reference right now.",
+                    "Match weather language to each event's start time/dayPart/weatherTimingHint, not just the overall daily high.",
+                    "For evening or night events, do not write as if the event is under blazing sun, midday heat, or a 99 degree sky. Use current/evening conditions or tonightLowF, or say after a hot day if dayHighF matters.",
+                    "Only mention sun/sky/heat at game time when the event is daytime or the context explicitly supports it.",
                     "Use the weather object as already-normalized local weather from either Tempest or ZIP forecast.",
                     "Do not mention missing weather fields; only use weather values that are present.",
                     "Mention real activities, transitions, timing, or weather details from the provided context.",
+                    "When todayHighlights are present, you may write brief message-bar lines about this day in history, a fun fact, a holiday, or a novelty day.",
+                    "If todayHighlights.joke is present and it fits naturally within the space, you may include one joke-style message; keep it short and do not force it.",
+                    "Keep todayHighlights messages lightweight and occasional; do not let them crowd out important schedule messages.",
+                    "Do not invent holidays, historical facts, dates, or observances. Use only the supplied todayHighlights values.",
+                    "Counts and count-ups are allowed when meaningful, for example anniversaries, birthdays, streaks, milestones, game/season counts, school countdowns, or event-specific countdowns.",
+                    "Never produce generic calendar-countdown filler such as days left in the year, day-of-year numbers, or Gregorian-calendar trivia.",
                     "If the user config includes team or group loyalty rules, follow only those rules from user-provided config.",
                     "Use event times exactly as provided. Do not convert, offset, or infer another timezone.",
                     "Do not include addresses, street names, venue addresses, or precise location details.",
                     "Do not give advice or make up private facts.",
+                    "Do not write reminder/nag/prep-advice lines such as pack a snack, bring water, grab sunscreen, wear a jacket, don't forget, remember to, or make sure to unless that exact item is explicitly in schedule notes.",
+                    "Prefer descriptive, upbeat status lines over instructions to the family.",
                     "Use one tasteful emoji when it fits naturally.",
                     "Keep each message family-friendly, concise, and playful.",
                     "Do not include markdown or commentary.",
