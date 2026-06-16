@@ -932,6 +932,16 @@ function renderTimerOptionSelect(selectedId = "") {
   return select;
 }
 
+function isTimerAssigned(timerId) {
+  if (!timerConfigCache?.slots || !timerId) return false;
+  return Object.values(timerConfigCache.slots).some((slot) => Array.isArray(slot.timerIds) && slot.timerIds.includes(timerId));
+}
+
+function removeTimerDefinitionIfUnassigned(timerId) {
+  if (!timerConfigCache || !timerId || isTimerAssigned(timerId)) return;
+  timerConfigCache.timers = timerConfigCache.timers.filter((timer) => timer.id !== timerId);
+}
+
 function renderSlotAssignmentRows(slotName) {
   const list = slotName === "lowerLeft" ? timerLeftList : timerRightList;
   const slot = timerConfigCache.slots[slotName];
@@ -972,9 +982,11 @@ function renderSlotAssignmentRows(slotName) {
     remove.type = "button";
     remove.textContent = "Delete";
     remove.addEventListener("click", () => {
+      const removedTimerId = slot.timerIds[index];
       slot.timerIds.splice(index, 1);
+      removeTimerDefinitionIfUnassigned(removedTimerId);
       syncTimerSettingsControls();
-      setTimerStatus("Timer assignment deleted locally. Save timers to keep it.", "warning");
+      setTimerStatus("Timer deleted locally. Save timers to keep it.", "warning");
     });
     actions.append(edit, remove);
     row.append(field, actions);
@@ -1518,6 +1530,63 @@ function selectDeterministicItem(items, salt = 0) {
   return items[Math.abs(seed + salt) % items.length];
 }
 
+function selectRelevantDeterministicItem(items, salt = 0) {
+  const relevantItems = Array.isArray(items)
+    ? items.filter(isRelevantTodayHistoryHighlight)
+    : [];
+  return selectDeterministicItem(relevantItems, salt);
+}
+
+function isRelevantTodayHistoryHighlight(item) {
+  const text = `${item || ""}`.trim();
+  if (!isUsefulFamilyMessageTodayHighlight(text)) return false;
+
+  const normalized = text.toLowerCase();
+  const boringOrTooNiche = [
+    /\bpreakness\b/,
+    /\bbelmont stakes\b/,
+    /\bkentucky derby\b/,
+    /\bgrand national\b/,
+    /\bstakes:\b/,
+    /\baboard\b/,
+    /\bthoroughbred\b/,
+    /\bhorse race\b/,
+    /\bcricket\b/,
+    /\bcurling\b/,
+    /\brugby\b/,
+    /\btest century\b/,
+    /\bstanley cup\b/,
+    /\bnhl\b/,
+    /\bgolf\b/,
+    /\btennis\b/
+  ];
+  if (boringOrTooNiche.some((pattern) => pattern.test(normalized))) return false;
+
+  const relevantToDashboard = [
+    /\bbaseball\b/,
+    /\bsoftball\b/,
+    /\bmlb\b/,
+    /\bworld series\b/,
+    /\bno-hitter\b/,
+    /\bperfect game\b/,
+    /\bhome runs?\b/,
+    /\blittle league\b/,
+    /\bncaa\b/,
+    /\bcollege world series\b/,
+    /\barizona state\b/,
+    /\bsun devils?\b/,
+    /\bgeorgia tech\b/,
+    /\bteam usa\b/,
+    /\bolympic\b/,
+    /\bnfl\b/,
+    /\bnba\b/,
+    /\bwnba\b/,
+    /\bfirst\b.*\b(baseball|softball|mlb|world series|olympic|nfl|nba|wnba)\b/,
+    /\brecord\b.*\b(baseball|softball|mlb|world series|olympic|nfl|nba|wnba)\b/
+  ];
+  return relevantToDashboard.some((pattern) => pattern.test(normalized));
+}
+
 function formatFamilyMessageAiTime(event, field) {
   if (!event || isAllDay(event)) return field === "start" ? "All day" : "";
   const value = event[field];
@@ -1562,15 +1631,148 @@ function getFamilyMessageEventTimeContext(event) {
   };
 }
 
+function getHourlyForecastDate(hour) {
+  if (!hour) return null;
+  if (Number.isFinite(Number(hour.timeEpoch))) return new Date(Number(hour.timeEpoch) * 1000);
+  if (hour.time) {
+    const parsed = new Date(hour.time);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
+}
+
+function getHourlyForecastForEvent(event) {
+  if (!event || isAllDay(event) || !(event.start instanceof Date) || !Array.isArray(lastWeatherPayload?.hourlyForecast)) {
+    return null;
+  }
+
+  const eventTime = event.start.getTime();
+  let closest = null;
+  let closestDiff = Infinity;
+
+  for (const hour of lastWeatherPayload.hourlyForecast) {
+    const forecastDate = getHourlyForecastDate(hour);
+    if (!forecastDate || !isSameDay(forecastDate, event.start)) continue;
+    const diff = Math.abs(forecastDate.getTime() - eventTime);
+    if (diff < closestDiff) {
+      closest = { ...hour, forecastDate };
+      closestDiff = diff;
+    }
+  }
+
+  return closestDiff <= 90 * 60 * 1000 ? closest : null;
+}
+
+function getFamilyMessageEventWeather(event) {
+  const hour = getHourlyForecastForEvent(event);
+  if (!hour) return null;
+
+  const eventTempF = roundFamilyMessageWeather(hour.tempF);
+  const eventFeelsLikeF = roundFamilyMessageWeather(hour.feelsLikeF ?? hour.tempF);
+  const windMph = roundFamilyMessageWeather(hour.windMph);
+  const gustMph = roundFamilyMessageWeather(hour.gustMph);
+  const rainChancePercent = roundFamilyMessageWeather(hour.rainChancePercent);
+  const conditions = `${hour.conditions || ""}`.trim();
+
+  return {
+    eventTempF,
+    eventFeelsLikeF,
+    conditions,
+    windMph,
+    gustMph,
+    rainChancePercent,
+    forecastTime: hour.forecastDate.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+    summary: [
+      eventTempF === null ? "" : `${eventTempF}° near event start`,
+      eventFeelsLikeF === null || eventFeelsLikeF === eventTempF ? "" : `feels like ${eventFeelsLikeF}°`,
+      conditions,
+      windMph === null ? "" : `wind ${windMph} mph${gustMph !== null && gustMph > windMph ? `, gust ${gustMph}` : ""}`,
+      rainChancePercent === null ? "" : `${rainChancePercent}% rain chance`
+    ].filter(Boolean).join(" • ")
+  };
+}
+
+function getFamilyMessageWeatherRelevance(event) {
+  if (!event || isAllDay(event)) {
+    return { relevant: false, reason: "All-day or broad event; use only broad weather if clearly useful." };
+  }
+
+  const text = `${event.summary || ""} ${event.calendarName || ""} ${event.location || ""}`.toLowerCase();
+  const indoorPatterns = [
+    /\bhair ?cut\b/,
+    /\bdental\b/,
+    /\borthodont/,
+    /\bdoctor\b/,
+    /\bappointment\b/,
+    /\bappt\b/,
+    /\bpiano\b/,
+    /\blesson\b/,
+    /\bmeeting\b/,
+    /\bbook club\b/,
+    /\bdinner\b/,
+    /\blunch\b/,
+    /\bconcert\b/,
+    /\bshowcase\b/,
+    /\bsite council\b/,
+    /\bgraduation\b/,
+    /\bbar mitzvah\b/,
+    /\bsleepover\b/,
+    /\bmassage\b/,
+    /\bwrestling\b/
+  ];
+  const outdoorPatterns = [
+    /\bbaseball\b/,
+    /\bsoftball\b/,
+    /\bsoccer\b/,
+    /\bfootball\b/,
+    /\blittle league\b/,
+    /\btsll\b/,
+    /\bwarriors\b/,
+    /\bcyclones\b/,
+    /\bsun devils\b/,
+    /\bgame\b/,
+    /\btournament\b/,
+    /\bpractice\b/,
+    /\bclinic\b/,
+    /\bfield\b/,
+    /\bstadium\b/,
+    /\bpark\b/,
+    /\bpool\b/,
+    /\bgolf\b/,
+    /\bfishing\b/,
+    /\bsnorkel/,
+    /\bwaterfall\b/,
+    /\btrip\b/,
+    /\btailgate\b/
+  ];
+
+  if (indoorPatterns.some((pattern) => pattern.test(text))) {
+    return { relevant: false, reason: "Looks indoors or not weather-sensitive." };
+  }
+  if (outdoorPatterns.some((pattern) => pattern.test(text))) {
+    return { relevant: true, reason: "Looks outdoors or weather-sensitive." };
+  }
+  return { relevant: false, reason: "No clear outdoor/weather-sensitive signal." };
+}
+
 function serializeFamilyMessageEvent(event) {
   const timeContext = getFamilyMessageEventTimeContext(event);
+  const weatherRelevance = getFamilyMessageWeatherRelevance(event);
+  const eventWeather = weatherRelevance.relevant ? getFamilyMessageEventWeather(event) : null;
   return {
     summary: `${event?.summary || ""}`.trim(),
     start: formatFamilyMessageAiTime(event, "start"),
     end: formatFamilyMessageAiTime(event, "end"),
     startHour: timeContext.startHour,
     dayPart: timeContext.dayPart,
-    weatherTimingHint: timeContext.weatherTimingHint,
+    weatherTimingHint: !weatherRelevance.relevant
+      ? `${timeContext.weatherTimingHint} Weather is not relevant for this event unless schedule notes explicitly say otherwise.`
+      : eventWeather?.eventTempF === null || !eventWeather
+      ? timeContext.weatherTimingHint
+      : `${timeContext.weatherTimingHint} Approximate event-start forecast: ${eventWeather.summary}.`,
+    weatherRelevant: weatherRelevance.relevant,
+    weatherRelevanceReason: weatherRelevance.reason,
+    eventWeather,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "local",
     allDay: Boolean(isAllDay(event)),
     location: `${event?.location || ""}`.trim(),
@@ -1658,7 +1860,17 @@ function buildFamilyMessageAiContext() {
     .filter((event) => isSameDay(event.start, now) || (event.start < now && event.end > now))
     .sort((a, b) => a.start - b.start);
   const notesForDay = Array.isArray(dayNotes[todayKey]) ? dayNotes[todayKey].filter((item) => item?.text?.trim()) : [];
-  const upcomingEvents = todayEvents.filter((event) => event.end > now).slice(0, 4);
+  const upcomingEvents = (() => {
+    const todayUpcoming = todayEvents.filter(event => event.end > now).slice(0, 4);
+    if (todayUpcoming.length >= 2) return todayUpcoming;
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const tomorrowEvents = latestCalendarEvents
+      .filter(event => isSameDay(event.start, tomorrow))
+      .slice(0, 4 - todayUpcoming.length);
+    return todayUpcoming.concat(tomorrowEvents);
+  })();
   const todayHighlights = buildFamilyMessageTodayHighlights();
 
   return {
@@ -1696,7 +1908,7 @@ function buildFamilyMessageTodayHighlights() {
   if (dashboardSettings.aiTodayHistoryMessages) {
     highlights.history = [content.sportsHistory, content.funFact]
       .map((item) => `${item || ""}`.trim())
-      .filter(isUsefulFamilyMessageTodayHighlight)
+      .filter(isRelevantTodayHistoryHighlight)
       .slice(0, 2);
   }
   if (dashboardSettings.aiNoveltyDayMessages) {
@@ -1705,11 +1917,13 @@ function buildFamilyMessageTodayHighlights() {
       ...(Array.isArray(content.observances) ? content.observances : [])
     ].map((item) => `${item || ""}`.trim()).filter(Boolean).slice(0, 4);
   }
-  const joke = `${content.joke || ""}`.trim();
-  if (joke && joke.length <= 140 && !/(adult|nsfw|sex|drunk|beer|bar)/i.test(joke)) {
-    highlights.joke = joke;
-  }
   return highlights;
+}
+
+function getDailyJokeFamilyMessage() {
+  const joke = `${todayContentCache?.joke || ""}`.trim();
+  if (!joke || joke.length > 140 || /(adult|nsfw|sex|drunk|beer|bar)/i.test(joke)) return "";
+  return joke;
 }
 
 function isUsefulFamilyMessageTodayHighlight(item) {
@@ -1832,7 +2046,7 @@ async function loadTodayContent() {
   }
 
   todayContentCache = {
-    sportsHistory: selectDeterministicItem(payload.sportsHistory?.[todayKey], 1) || "No sports history highlight loaded for today.",
+    sportsHistory: selectRelevantDeterministicItem(payload.sportsHistory?.[todayKey], 1),
     joke,
     officialHolidays: (payload.officialHolidays?.[todayKey] || []).slice(0, 3),
     observances: (payload.observances?.[todayKey] || []).slice(0, 3),
@@ -1870,7 +2084,7 @@ async function openTodayModal() {
   try {
     const data = await loadTodayContent();
     todayModalDate.textContent = data.dateLabel;
-    todaySportsHistory.textContent = data.sportsHistory;
+    todaySportsHistory.textContent = data.sportsHistory || "No especially relevant history highlight today.";
     todayJoke.textContent = data.joke;
     todayObservances.textContent = data.officialHolidays.length ? data.officialHolidays.join(" • ") : "No official holidays today.";
     todayFunFact.textContent = data.funFact;
@@ -1959,8 +2173,163 @@ function decodeICSValue(value) {
     .replace(/\\\\/g, "\\");
 }
 
+function parseRRule(value) {
+  return value.split(";").reduce((rule, part) => {
+    const [rawKey, rawValue = ""] = part.split("=");
+    if (!rawKey) return rule;
+    rule[rawKey.toUpperCase()] = rawValue;
+    return rule;
+  }, {});
+}
+
+function getLocalDateTimeKey(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+    String(date.getSeconds()).padStart(2, "0")
+  ].join("");
+}
+
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function addMonths(date, months) {
+  const d = new Date(date);
+  const originalDate = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + months);
+  d.setDate(Math.min(originalDate, daysInMonth(d.getFullYear(), d.getMonth())));
+  return d;
+}
+
+function applyTime(date, timeSource) {
+  const d = new Date(date);
+  d.setHours(timeSource.getHours(), timeSource.getMinutes(), timeSource.getSeconds(), timeSource.getMilliseconds());
+  return d;
+}
+
+function getMonthsBetween(start, end) {
+  return (end.getFullYear() - start.getFullYear()) * 12 + end.getMonth() - start.getMonth();
+}
+
+function parseNumberList(value) {
+  return `${value || ""}`.split(",").map((item) => Number(item)).filter(Number.isFinite);
+}
+
+function getWeekdayNumbers(value, fallback) {
+  const weekdayMap = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+  const days = `${value || ""}`
+    .split(",")
+    .map((item) => item.replace(/^[+-]?\d+/, "").slice(0, 2).toUpperCase())
+    .map((item) => weekdayMap[item])
+    .filter((item) => Number.isInteger(item));
+  return days.length ? days : [fallback];
+}
+
+function parseICSDateList(value, tzid) {
+  return `${value || ""}`
+    .split(",")
+    .map((item) => parseICSDate(tzid ? `${item}|${tzid}` : item))
+    .filter(Boolean);
+}
+
+function cloneOccurrence(event, start, durationMs, recurrenceIndex) {
+  const copy = { ...event, start, end: new Date(start.getTime() + durationMs), recurrenceIndex };
+  delete copy.rrule;
+  delete copy.exdates;
+  return copy;
+}
+
+function expandRecurringEvent(event) {
+  if (!event.rrule) return [event];
+
+  const rule = parseRRule(event.rrule);
+  const freq = rule.FREQ;
+  const interval = Math.max(1, Number(rule.INTERVAL || 1));
+  const countLimit = Number(rule.COUNT || 0);
+  const until = rule.UNTIL ? parseICSDate(rule.UNTIL) : null;
+  const durationMs = event.end - event.start;
+  const now = new Date();
+  const windowStart = addDays(startOfWeek(now), -370);
+  const windowEnd = addDays(startOfWeek(now), 730);
+  const excluded = new Set((event.exdates || []).map(getLocalDateTimeKey));
+  const occurrences = [];
+  let generatedCount = 0;
+
+  const pushIfValid = (start) => {
+    if (start < event.start) return true;
+    if (until && start > until) return false;
+    generatedCount += 1;
+    if (countLimit && generatedCount > countLimit) return false;
+    if (excluded.has(getLocalDateTimeKey(start))) return true;
+    if (start < windowStart || start > windowEnd) return true;
+    occurrences.push(cloneOccurrence(event, start, durationMs, generatedCount));
+    return true;
+  };
+
+  if (freq === "DAILY") {
+    for (let cursor = new Date(event.start); cursor <= windowEnd; cursor = addDays(cursor, interval)) {
+      if (!pushIfValid(new Date(cursor))) break;
+    }
+  } else if (freq === "WEEKLY") {
+    const weekdays = getWeekdayNumbers(rule.BYDAY, event.start.getDay());
+    for (let cursorDay = new Date(event.start); cursorDay <= windowEnd; cursorDay = addDays(cursorDay, 1)) {
+      const weeksFromStart = Math.floor((startOfWeek(cursorDay) - startOfWeek(event.start)) / (7 * 24 * 60 * 60 * 1000));
+      if (weeksFromStart < 0 || weeksFromStart % interval !== 0 || !weekdays.includes(cursorDay.getDay())) continue;
+      if (!pushIfValid(applyTime(cursorDay, event.start))) break;
+    }
+  } else if (freq === "MONTHLY") {
+    const byMonthDays = parseNumberList(rule.BYMONTHDAY);
+    const weekdays = rule.BYDAY ? getWeekdayNumbers(rule.BYDAY, event.start.getDay()) : [];
+    const positions = parseNumberList(rule.BYSETPOS);
+
+    for (let monthCursor = new Date(event.start.getFullYear(), event.start.getMonth(), 1); monthCursor <= windowEnd; monthCursor = addMonths(monthCursor, 1)) {
+      const monthsFromStart = getMonthsBetween(event.start, monthCursor);
+      if (monthsFromStart < 0 || monthsFromStart % interval !== 0) continue;
+
+      let candidateDays = [];
+      const totalDays = daysInMonth(monthCursor.getFullYear(), monthCursor.getMonth());
+
+      if (weekdays.length) {
+        for (let day = 1; day <= totalDays; day += 1) {
+          const candidate = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), day);
+          if (weekdays.includes(candidate.getDay())) candidateDays.push(candidate);
+        }
+        if (positions.length) {
+          candidateDays = positions
+            .map((position) => position > 0 ? candidateDays[position - 1] : candidateDays[candidateDays.length + position])
+            .filter(Boolean);
+        }
+      } else if (byMonthDays.length) {
+        candidateDays = byMonthDays
+          .map((day) => day > 0 ? day : totalDays + day + 1)
+          .filter((day) => day >= 1 && day <= totalDays)
+          .map((day) => new Date(monthCursor.getFullYear(), monthCursor.getMonth(), day));
+      } else if (event.start.getDate() <= totalDays) {
+        candidateDays = [new Date(monthCursor.getFullYear(), monthCursor.getMonth(), event.start.getDate())];
+      }
+
+      for (const candidateDay of candidateDays) {
+        if (!pushIfValid(applyTime(candidateDay, event.start))) return occurrences;
+      }
+    }
+  } else {
+    return [event];
+  }
+
+  return occurrences;
+}
+
+function unfoldICSLines(text) {
+  return text.replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "").split("\n");
+}
+
 function parseICS(text, calendarMeta) {
-  const lines = text.replace(/\r\n/g, "\n").replace(/\n /g, "").split("\n");
+  const lines = unfoldICSLines(text);
   const events = [];
   let current = null;
 
@@ -1971,7 +2340,7 @@ function parseICS(text, calendarMeta) {
     }
     if (line === "END:VEVENT") {
       if (current?.start && current?.end && current?.summary) {
-        events.push(current);
+        events.push(...expandRecurringEvent(current));
       }
       current = null;
       continue;
@@ -1986,9 +2355,13 @@ function parseICS(text, calendarMeta) {
     const valueWithTz = tzMatch ? `${value}|${tzMatch[1]}` : value;
     const decodedValue = decodeICSValue(value);
 
+    if (key === "UID") current.uid = decodedValue;
     if (key === "SUMMARY") current.summary = decodedValue;
     if (key === "LOCATION") current.location = decodedValue;
     if (key === "DESCRIPTION") current.description = decodedValue;
+    if (key === "RRULE") current.rrule = value;
+    if (key === "EXDATE") current.exdates = [...(current.exdates || []), ...parseICSDateList(value, tzMatch?.[1])];
+    if (key === "RECURRENCE-ID") current.recurrenceId = parseICSDate(valueWithTz);
     if (key === "DTSTART") current.start = parseICSDate(valueWithTz);
     if (key === "DTEND") current.end = parseICSDate(valueWithTz);
     if (key === "ORGANIZER") {
@@ -1997,7 +2370,16 @@ function parseICS(text, calendarMeta) {
     }
   }
 
-  return events;
+  const overrideKeys = new Set(
+    events
+      .filter((event) => event.uid && event.recurrenceId)
+      .map((event) => `${event.uid}|${getLocalDateTimeKey(event.recurrenceId)}`)
+  );
+
+  return events.filter((event) => {
+    if (!event.uid || event.recurrenceId) return true;
+    return !overrideKeys.has(`${event.uid}|${getLocalDateTimeKey(event.start)}`);
+  });
 }
 
 function eventForDay(event, dayStart, dayEnd) {
@@ -2746,6 +3128,11 @@ function buildFamilyMessages({ skipAiRefresh = false } = {}) {
     }
   }
 
+  const dailyJokeMessage = getDailyJokeFamilyMessage();
+  if (dailyJokeMessage) {
+    generatedMessages.push(dailyJokeMessage);
+  }
+
   if (currentAiGeneratedFamilyMessages.length) {
     generatedMessages.push(...currentAiGeneratedFamilyMessages);
   }
@@ -3117,6 +3504,13 @@ async function refreshDashboard() {
     await loadFamilyMessage();
   } catch (error) {
     console.error("Family message refresh failed:", error);
+  }
+
+  try {
+    await loadTodayContent();
+    buildFamilyMessages({ skipAiRefresh: true });
+  } catch (error) {
+    console.error("Today content refresh failed:", error);
   }
 
   try {

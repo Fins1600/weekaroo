@@ -48,16 +48,22 @@ Requirements:
 - Each message must be 90 characters or fewer and fit on one dashboard line.
 - Each message must be unique, creative, and based on the schedule, weather, or both.
 - Blend weather with events when it is useful, for example heat before an afternoon game or rain before errands.
-- Match weather language to the event time. For evening or night events, do not describe the event as happening under blazing sun or midday heat just because the daily high was hot.
-- For evening or night events, prefer current/evening conditions or tonightLowF. If referencing dayHighF, frame it as earlier-day context, for example after a hot day.
+- Match weather language to the event time. Use each event's eventWeather/eventTempF when present instead of the daily high or overnight low.
+- Only blend weather with events where weatherRelevant is true. Do not mention weather for indoor/non-weather-sensitive events like haircuts, dental appointments, piano lessons, meetings, or wrestling club.
+- For evening or night events, prefer eventWeather, current/evening conditions, or tonightLowF. If referencing dayHighF, frame it as earlier-day context, for example after a hot day.
 - Use the weather object as already-normalized local weather from either Tempest or ZIP forecast.
 - Do not mention missing weather fields, only use weather values that are present.
 - Mention real activities, transitions, timing, or weather details from the provided context.
-- When enabled in display settings, todayHighlights may include this-day-in-history facts, fun facts, holidays, novelty days, or a joke of the day. Use them only when they make a brief, fun message-bar line.
-- If todayHighlights.joke is present and it fits naturally within the line limit, you may include one joke-style message. Do not force it.
+- When enabled in display settings, todayHighlights may include this-day-in-history facts, fun facts, holidays, or novelty days. Use them only when they are clearly relevant to this family dashboard, for example baseball, softball, ASU/Sun Devils, Georgia Tech, Team USA, major US sports milestones, or broadly recognizable historic moments.
+- Skip history messages when the supplied history item is obscure, niche, trivia-like, or only technically historic. Do not write about horse-racing winners, generic calendar facts, or obscure old sports results.
+- Do not write or invent joke messages. The dashboard adds the exact daily joke separately from the popup content.
 - Do not invent holidays, historical facts, dates, or observances. Use only supplied todayHighlights values.
 - Counts and count-ups are allowed when they are meaningful, for example an anniversary, birthday, streak, milestone, game/season count, school countdown, or event-specific countdown.
 - Never produce generic calendar-countdown filler such as "223 days left in the year", "the 143rd day of the year", or Gregorian-calendar trivia. Those are not useful dashboard messages.
+- Team loyalty comes from each event's calendarName/cheerTeam, not from opponent names in the event title.
+- If an event has cheerTeam, only cheer for that cheerTeam. Never cheer for a different team because its name appears in another calendar, event summary, opponent text, or user config.
+- If an event is a practice, BP, batting practice, workout, training, or clinic, do not generate a cheer message or team slogan, even when it has a cheerTeam.
+- If an event has no cheerTeam, avoid team-cheer slogans for that event.
 - Use event times exactly as provided. Do not convert, offset, or infer another timezone.
 - Do not include addresses, street names, venue addresses, or precise location details.
 - Do not give advice or make up private facts.
@@ -537,21 +543,66 @@ class Handler(SimpleHTTPRequestHandler):
         ]
         return any(re.search(pattern, value) for pattern in prep_patterns)
 
+    def clean_family_message_event_weather(self, weather):
+        if not isinstance(weather, dict):
+            return {}
+
+        def clean_number(value, decimals=0):
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                return None
+            if not math.isfinite(number):
+                return None
+            return round(number, decimals)
+
+        return {
+            "eventTempF": clean_number(weather.get("eventTempF")),
+            "eventFeelsLikeF": clean_number(weather.get("eventFeelsLikeF")),
+            "conditions": self.clean_ai_text(weather.get("conditions"), 60),
+            "windMph": clean_number(weather.get("windMph")),
+            "gustMph": clean_number(weather.get("gustMph")),
+            "rainChancePercent": clean_number(weather.get("rainChancePercent")),
+            "forecastTime": self.clean_ai_text(weather.get("forecastTime"), 40),
+            "summary": self.clean_ai_text(weather.get("summary"), 180)
+        }
+
     def clean_family_message_event(self, event):
         if not isinstance(event, dict):
             return {}
+        calendar_name = self.clean_ai_text(event.get("calendarName"), 90)
+        summary = self.clean_ai_text(event.get("summary"), 90)
+        cheer_team = "" if self.is_family_message_practice_event(summary) else self.derive_family_message_cheer_team(calendar_name)
         return {
-            "summary": self.clean_ai_text(event.get("summary"), 90),
+            "summary": summary,
             "start": self.clean_ai_text(event.get("start"), 40),
             "end": self.clean_ai_text(event.get("end"), 40),
             "startHour": event.get("startHour") if isinstance(event.get("startHour"), int) and 0 <= event.get("startHour") <= 23 else None,
             "dayPart": self.clean_ai_text(event.get("dayPart"), 24),
             "weatherTimingHint": self.clean_ai_text(event.get("weatherTimingHint"), 180),
+            "weatherRelevant": bool(event.get("weatherRelevant")),
+            "weatherRelevanceReason": self.clean_ai_text(event.get("weatherRelevanceReason"), 100),
+            "eventWeather": self.clean_family_message_event_weather(event.get("eventWeather")),
             "allDay": bool(event.get("allDay")),
             "location": "",
             "description": "",
-            "calendarName": self.clean_ai_text(event.get("calendarName"), 90)
+            "calendarName": calendar_name,
+            "cheerTeam": cheer_team,
+            "cheerAllowed": bool(cheer_team)
         }
+
+    def is_family_message_practice_event(self, summary):
+        return bool(re.search(r"\b(practice|bp|batting practice|workout|training|clinic)\b", f"{summary or ''}", re.I))
+
+    def derive_family_message_cheer_team(self, calendar_name):
+        name = self.clean_ai_text(calendar_name, 90)
+        if not name:
+            return ""
+        if re.search(r"\b(family|holiday|holidays|birthday|birthdays|weather|school)\b", name, re.I):
+            return ""
+        team = re.sub(r"\b(baseball|softball|calendar|schedule|games?|practices?)\b", "", name, flags=re.I)
+        team = " ".join(team.split()).strip(" -–—:•")
+        return self.clean_ai_text(team or name, 60)
 
     def clean_family_message_note(self, note):
         if not isinstance(note, dict):
@@ -564,8 +615,7 @@ class Handler(SimpleHTTPRequestHandler):
         return {
             "dateLabel": self.clean_ai_text(highlights.get("dateLabel"), 80),
             "history": self.clean_ai_list(highlights.get("history"), limit=2, item_limit=160),
-            "observances": self.clean_ai_list(highlights.get("observances"), limit=4, item_limit=80),
-            "joke": self.clean_ai_text(highlights.get("joke"), 140)
+            "observances": self.clean_ai_list(highlights.get("observances"), limit=4, item_limit=80)
         }
 
     def clean_family_message_weather(self, weather):
@@ -641,7 +691,7 @@ class Handler(SimpleHTTPRequestHandler):
                 weather.get(key) is not None and weather.get(key) != ""
                 for key in ["conditions", "currentTempF", "feelsLikeF", "dayHighF", "tonightLowF", "highF", "lowF", "windMph", "rainChancePercent", "summary"]
             )
-            has_today_context = bool(today_highlights.get("history") or today_highlights.get("observances") or today_highlights.get("joke"))
+            has_today_context = bool(today_highlights.get("history") or today_highlights.get("observances"))
 
             if not cleaned_events and not cleaned_notes and not has_weather_context and not has_today_context:
                 return {"messages": [], "model": config.get("model"), "promptCount": prompt_count, "reason": "no schedule or weather context"}
@@ -667,7 +717,10 @@ class Handler(SimpleHTTPRequestHandler):
                     "Each message must be 90 characters or fewer and fit on one dashboard line.",
                     "Each message must be unique, creative, and based on the schedule, weather, or both.",
                     "Blend weather with events when it is useful, for example heat before an afternoon game or rain before errands.",
-                    "Keep currentTempF as context, but when a message mentions temperature, prefer dayHighF for daytime heat or tonightLowF for evening/night cooldown because those are more understandable.",
+                    "Keep currentTempF as context, but when a message mentions temperature for a specific event, prefer that event's eventWeather.eventTempF.",
+                    "Use dayHighF for broad daytime heat messages and tonightLowF for broad evening/night cooldown messages only when no eventWeather is present.",
+                    "Only blend weather with an event when that event has weatherRelevant=true.",
+                    "Do not mention weather for indoor/non-weather-sensitive events such as haircuts, dental appointments, piano lessons, meetings, or wrestling club.",
                     "Follow weather.temperatureFocus when present; it tells you whether today's high or tonight's low is the better temperature reference right now.",
                     "Match weather language to each event's start time/dayPart/weatherTimingHint, not just the overall daily high.",
                     "For evening or night events, do not write as if the event is under blazing sun, midday heat, or a 99 degree sky. Use current/evening conditions or tonightLowF, or say after a hot day if dayHighF matters.",
@@ -675,13 +728,18 @@ class Handler(SimpleHTTPRequestHandler):
                     "Use the weather object as already-normalized local weather from either Tempest or ZIP forecast.",
                     "Do not mention missing weather fields; only use weather values that are present.",
                     "Mention real activities, transitions, timing, or weather details from the provided context.",
-                    "When todayHighlights are present, you may write brief message-bar lines about this day in history, a fun fact, a holiday, or a novelty day.",
-                    "If todayHighlights.joke is present and it fits naturally within the space, you may include one joke-style message; keep it short and do not force it.",
+                    "When todayHighlights are present, you may write brief message-bar lines about this day in history, a fun fact, a holiday, or a novelty day only when it is clearly relevant to this family dashboard, for example baseball, softball, ASU/Sun Devils, Georgia Tech, Team USA, major US sports milestones, or broadly recognizable historic moments.",
+                    "Skip history messages when the supplied history item is obscure, niche, trivia-like, or only technically historic. Do not write about horse-racing winners, generic calendar facts, or obscure old sports results.",
+                    "Do not write or invent joke messages. The dashboard adds the exact daily joke separately from the popup content.",
                     "Keep todayHighlights messages lightweight and occasional; do not let them crowd out important schedule messages.",
                     "Do not invent holidays, historical facts, dates, or observances. Use only the supplied todayHighlights values.",
                     "Counts and count-ups are allowed when meaningful, for example anniversaries, birthdays, streaks, milestones, game/season counts, school countdowns, or event-specific countdowns.",
                     "Never produce generic calendar-countdown filler such as days left in the year, day-of-year numbers, or Gregorian-calendar trivia.",
-                    "If the user config includes team or group loyalty rules, follow only those rules from user-provided config.",
+                    "Team loyalty comes from each event's calendarName and cheerTeam, not from opponent names in the event title.",
+                    "If an event has cheerTeam, only cheer for that cheerTeam. For example, a Sun Devils calendar event may say Go Sun Devils, and a Bombers calendar event may say Go Bombers.",
+                    "If an event is a practice, BP, batting practice, workout, training, or clinic, do not generate a cheer message or team slogan; treat it as a neutral schedule item.",
+                    "Never cheer for Bombers, Scorpions, Sun Devils, or any other team unless that exact team is the event's cheerTeam or calendarName.",
+                    "If an event has no cheerTeam, avoid team-cheer slogans for that event.",
                     "Use event times exactly as provided. Do not convert, offset, or infer another timezone.",
                     "Do not include addresses, street names, venue addresses, or precise location details.",
                     "Do not give advice or make up private facts.",
@@ -690,7 +748,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "Use one tasteful emoji when it fits naturally.",
                     "Keep each message family-friendly, concise, and playful.",
                     "Do not include markdown or commentary.",
-                    "Follow customInstructions for tone and preferences, unless they conflict with privacy, JSON, length, or schedule-accuracy rules."
+                    "Follow customInstructions for tone and preferences, unless they conflict with privacy, JSON, length, calendar-based team loyalty, or schedule-accuracy rules."
                 ],
                 "jsonShape": {
                     "messages": ["short message 1", "short message 2", "short message 3"]
@@ -700,7 +758,7 @@ class Handler(SimpleHTTPRequestHandler):
             body = json.dumps({
                 "model": config.get("model") or DEFAULT_AI_CONFIG["model"],
                 "messages": [
-                    {"role": "system", "content": "You write short, creative, family-friendly dashboard messages using schedule and weather context. Keep each line under 90 characters, use local times exactly as provided, avoid address/location details, and output strict JSON only."},
+                    {"role": "system", "content": "You write short, creative, family-friendly dashboard messages using schedule and weather context. Keep each line under 90 characters, use local times exactly as provided, avoid address/location details, use only calendarName/cheerTeam for team loyalty, never infer the supported team from opponent text, and output strict JSON only."},
                     {"role": "user", "content": json.dumps(user_prompt)}
                 ],
                 "temperature": 0.75,
@@ -1257,6 +1315,19 @@ class Handler(SimpleHTTPRequestHandler):
                 "sunset": day.get("sunset"),
                 "isToday": index == 0
             })
+        hourly_forecast = []
+        for hour in ((forecast.get("forecast") or {}).get("hourly") or [])[:96]:
+            hourly_forecast.append({
+                "timeEpoch": hour.get("time"),
+                "conditions": hour.get("conditions") or "Weather",
+                "icon": hour.get("icon"),
+                "tempF": self.c_to_f(hour.get("air_temperature")),
+                "feelsLikeF": self.c_to_f(hour.get("feels_like")),
+                "windMph": hour.get("wind_avg"),
+                "gustMph": hour.get("wind_gust"),
+                "rainChancePercent": hour.get("precip_probability"),
+                "uv": hour.get("uv")
+            })
 
         precip_today_in = observation.get("precip_accum_local_day")
         precip_yesterday_in = observation.get("precip_accum_local_yesterday")
@@ -1283,6 +1354,7 @@ class Handler(SimpleHTTPRequestHandler):
             "sunrise": today_forecast.get("sunrise"),
             "sunset": today_forecast.get("sunset"),
             "forecastDays": daily_forecast,
+            "hourlyForecast": hourly_forecast,
             "historyDays": {},
             "timestamp": observation.get("timestamp")
         }
@@ -1303,6 +1375,7 @@ class Handler(SimpleHTTPRequestHandler):
             "https://api.open-meteo.com/v1/forecast"
             f"?latitude={latitude}&longitude={longitude}"
             "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_gusts_10m"
+            "&hourly=temperature_2m,apparent_temperature,weather_code,precipitation_probability,wind_speed_10m,wind_gusts_10m,uv_index"
             "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,sunrise,sunset"
             "&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&timezone=auto&forecast_days=7"
         )
@@ -1324,6 +1397,22 @@ class Handler(SimpleHTTPRequestHandler):
                 "sunrise": (daily.get("sunrise") or [None] * len(dates))[index],
                 "sunset": (daily.get("sunset") or [None] * len(dates))[index],
                 "isToday": index == 0
+            })
+        hourly = weather.get("hourly") or {}
+        hourly_times = hourly.get("time") or []
+        hourly_forecast = []
+        for index, time_value in enumerate(hourly_times[:168]):
+            code = (hourly.get("weather_code") or [None] * len(hourly_times))[index]
+            hourly_forecast.append({
+                "time": time_value,
+                "conditions": WEATHER_CODE_TEXT.get(code, "Weather"),
+                "icon": code,
+                "tempF": (hourly.get("temperature_2m") or [None] * len(hourly_times))[index],
+                "feelsLikeF": (hourly.get("apparent_temperature") or [None] * len(hourly_times))[index],
+                "windMph": (hourly.get("wind_speed_10m") or [None] * len(hourly_times))[index],
+                "gustMph": (hourly.get("wind_gusts_10m") or [None] * len(hourly_times))[index],
+                "rainChancePercent": (hourly.get("precipitation_probability") or [None] * len(hourly_times))[index],
+                "uv": (hourly.get("uv_index") or [None] * len(hourly_times))[index]
             })
 
         today_forecast = daily_forecast[0] if daily_forecast else {}
@@ -1352,6 +1441,7 @@ class Handler(SimpleHTTPRequestHandler):
             "sunrise": today_forecast.get("sunrise"),
             "sunset": today_forecast.get("sunset"),
             "forecastDays": daily_forecast,
+            "hourlyForecast": hourly_forecast,
             "historyDays": {},
             "timestamp": current.get("time")
         }
